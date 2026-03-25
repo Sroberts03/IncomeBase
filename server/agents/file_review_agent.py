@@ -3,6 +3,13 @@ from agents.base_agent import BaseAgent
 from models.file_review_schema import BatchFileReview
 
 class FileReviewAgent(BaseAgent):
+    def __init__(self, client):
+        super().__init__(
+            client=client,
+            model="gpt-4o-mini",
+            agent_name="file_review",
+            version="v1"
+        )
     async def review(self, images_base64: List[str]) -> BatchFileReview:
         prompt = self.load_prompt()
         

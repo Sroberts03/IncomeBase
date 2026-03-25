@@ -5,6 +5,13 @@ from models.classifier_schema import ClassifyFile
 
 
 class ClassifierAgent(BaseAgent):
+    def __init__(self, client):
+        super().__init__(
+            client=client,
+            model="gpt-4o-mini",
+            agent_name="classifier",
+            version="v1"
+        )
     async def classify(self, image_base64: str) -> ClassifyFile:
         prompt = self.load_prompt()
         vision_content = [

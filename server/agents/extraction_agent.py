@@ -3,6 +3,13 @@ from agents.base_agent import BaseAgent
 from models.extraction_schema import BatchExtractionResult
 
 class ExtractionAgent(BaseAgent):
+    def __init__(self, client):
+        super().__init__(
+            client=client,
+            model="gpt-4o-mini",
+            agent_name="extraction",
+            version="v1"
+        )
     async def extract_batch(self, processed_files: list[dict]) -> BatchExtractionResult:
         prompt = self.load_prompt()
         vision_content = [{"type": "text", "text": "Extract financial data from these mixed sources."}]
