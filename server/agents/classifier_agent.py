@@ -1,7 +1,7 @@
 from typing import Any
 
 from agents.base_agent import BaseAgent
-from server.models.classifier_schema import ClassifyFile
+from models.classifier_schema import ClassifyFile
 
 
 class ClassifierAgent(BaseAgent):
