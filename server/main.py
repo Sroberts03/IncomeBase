@@ -1,15 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# 1. Initialize the App
 app = FastAPI(
     title="IncomeBase API",
     description="AI-powered income reconstruction for self-employed borrowers",
     version="0.1.0"
 )
 
-# 2. Configure CORS (Cross-Origin Resource Sharing)
-# This is MANDATORY for your Vite (React) frontend to talk to this backend
 origins = [
     "http://localhost:5173", 
     "http://127.0.0.1:5173",
