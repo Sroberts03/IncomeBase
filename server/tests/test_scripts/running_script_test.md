@@ -1,6 +1,6 @@
 # Running Tests Scripts
 
-## to run file_review_classifier_pipeline.py
+## To run file_review_classifier_pipeline.py
 ### make sure to first run this in your terminal to get test files:
 python tests/test_scripts/create_test_files.py  
 ### after that run this in your terminal:
@@ -25,3 +25,30 @@ Source: bank
 Status: REJECTED
 Message: Document is outdated with a date from the previous year.
 🛑 Skipping Classification for wrong_type_w2.jpg.
+
+## To run extraction_pipeline.py:
+### make sure to first run this in your terminal to get the test files:
+python tests/test_scripts/create_test_pdf.py    
+and 
+python tests/test_scripts/create_test_files.py  
+
+### after that run:
+ python tests/test_scripts/extraction_pipeline.py
+
+ ### Expected output:
+🚀 Extractor Agent starting on 4 files...
+
+--- perfect_statement.jpg ---
+Institution: Chase Bank
+Reasoning: 
+  💰 2026-03-01 | Stripe Payout                  | $500.0
+
+--- digital_statement.pdf ---
+Institution: Wells Fargo
+Reasoning: 
+  💰 2026-02-05 | Stripe Payout                  | $2500.0
+  💰 2026-02-15 | Gusto Payroll                  | $4200.0
+
+--- wrong_type_w2.jpg ---
+Institution: 
+Reasoning: This is a Tax Form, not a transaction statement.
