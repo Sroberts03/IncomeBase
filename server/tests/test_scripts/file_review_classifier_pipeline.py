@@ -19,8 +19,8 @@ client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 async def test_pipeline():
     # 1. Initialize Agents
     # Note: Use gpt-4o or gpt-4o-mini for Vision capabilities
-    reviewer = FileReviewAgent(client=client, model="gpt-4o-mini", agent_name="file_review", version="v1")
-    classifier = ClassifierAgent(client=client, model="gpt-4o-mini", agent_name="classifier", version="v1")
+    reviewer = FileReviewAgent(client=client)
+    classifier = ClassifierAgent(client=client)
 
     # 2. Collect all test images from the directory
     test_dir = Path("tests/test_docs")

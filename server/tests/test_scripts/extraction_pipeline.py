@@ -16,7 +16,7 @@ load_dotenv()
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 async def test_extraction():
-    agent = ExtractionAgent(client=client, model="gpt-4o-mini", agent_name="extraction", version="v1")
+    agent = ExtractionAgent(client=client)
     test_dir = Path("tests/test_docs")
     
     # 1. Use the Parser to build the payload
