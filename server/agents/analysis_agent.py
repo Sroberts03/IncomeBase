@@ -1,3 +1,5 @@
+# This agent is responsible for analyzing the financial context of a 
+# borrower and providing a structured analysis result.
 from agents.base_agent import BaseAgent
 from models.analysis_schema import AnalysisResult
 
