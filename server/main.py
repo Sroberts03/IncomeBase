@@ -1,12 +1,28 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from app.core.container import container
+from app.api.v1.file_routes import router as file_router
 
+# 2. Define the Lifespan Logic
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # STARTUP: Create Singletons (Agents, DAOs, Handlers)
+    print("🚀 Initializing Summit West Engine...")
+    container.initialize() 
+    yield
+    # SHUTDOWN: Clean up resources if needed
+    print("💤 Shutting down...")
+
+# 3. Initialize App with Lifespan
 app = FastAPI(
     title="IncomeBase API",
     description="AI-powered income reconstruction for self-employed borrowers",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan 
 )
 
+# 4. CORS Middleware
 origins = [
     "http://localhost:5173", 
     "http://127.0.0.1:5173",
@@ -16,18 +32,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows GET, POST, DELETE, etc.
-    allow_headers=["*"],  # Allows custom headers like Authorization
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# 3. Include Routers (The "Plug-ins")
-# This keeps main.py clean by importing routes from other files
-#app.include_router(
-    #prefix="/api/v1/underwriting", 
-    #tags=["Underwriting Engine"]
-#)
+# 5. Register Routers
+app.include_router(file_router)
 
-# 4. Root/Health Check Endpoints
+# 6. Health Checks
 @app.get("/", tags=["Health"])
 async def root():
     return {

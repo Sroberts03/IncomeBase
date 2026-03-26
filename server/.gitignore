@@ -1,2 +1,22 @@
-venv
+# Python bytecode
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Environments (Your .venv folder)
+.venv/
+env/
+venv/
+ENV/
+
+# Secrets (CRITICAL: Do not commit your Supabase/OpenAI keys)
 .env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# macOS specific
+.DS_Store
