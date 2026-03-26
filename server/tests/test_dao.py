@@ -16,6 +16,8 @@ class MockSupabase:
         self.table_return.select.return_value = self.table_return
         self.table_return.insert.return_value = self.table_return
         self.table_return.update.return_value = self.table_return
+        self.table_return.upsert.return_value = self.table_return
+        self.table_return.order.return_value = self.table_return
         self.table_return.eq.return_value = self.table_return
         self.table_return.single = AsyncMock()
         self.table_return.execute = AsyncMock()
@@ -25,14 +27,16 @@ class TestFileDao(unittest.IsolatedAsyncioTestCase):
         self.mock_supabase = MockSupabase()
         self.dao = FileDao(self.mock_supabase)
 
-    async def test_get_borrower_id_from_link_token_success(self):
-        self.mock_supabase.table_return.execute.return_value = MagicMock(data=[{"borrower_id": "b123"}])
+    async def test_get_borrower_data_from_link_token_success(self):
+        self.mock_supabase.table_return.execute.return_value = MagicMock(data=[
+            {"borrower_id": "b123", "borrowers": {"zip_code": "12345"}}
+        ])
         
-        result = await self.dao.get_borrower_id_from_link_token("token123")
+        result = await self.dao.get_borrower_data_from_link_token("token123")
         
-        self.assertEqual(result, "b123")
+        self.assertEqual(result["borrower_id"], "b123")
+        self.assertEqual(result["zip_code"], "12345")
         self.mock_supabase.table.assert_called_with("file_links")
-        self.mock_supabase.table_return.select.assert_called_with("borrower_id")
 
     async def test_get_pending_records(self):
         expected_data = [{"id": "f1", "file_path": "path1"}]
@@ -87,6 +91,33 @@ class TestLenderDao(unittest.IsolatedAsyncioTestCase):
         
         self.assertEqual(result, "b123")
         self.mock_supabase.table.assert_called_with("borrowers")
+
+    async def test_create_file_link(self):
+        await self.dao.create_file_link("b123", "token123", "expires")
+        self.mock_supabase.table.assert_called_with("file_links")
+        self.mock_supabase.table_return.upsert.assert_called()
+
+    async def test_get_borrower_by_link_token(self):
+        self.mock_supabase.table_return.execute.return_value = MagicMock(data=[
+            {"borrower_id": "b123", "borrowers": {"full_name": "Test"}}
+        ])
+        result = await self.dao.get_borrower_by_link_token("token123")
+        self.assertEqual(result["borrower_id"], "b123")
+
+    async def test_get_borrowers_for_org(self):
+        self.mock_supabase.table_return.execute.return_value = MagicMock(data=[{"borrower_id": "b1"}])
+        result = await self.dao.get_borrowers_for_org("org123")
+        self.assertEqual(len(result), 1)
+
+    async def test_get_dashboard_stats(self):
+        self.mock_supabase.table_return.execute.return_value = MagicMock(data=[
+            {"status": "Needs Link Creation"},
+            {"status": "Completed"}
+        ])
+        result = await self.dao.get_dashboard_stats("org123")
+        self.assertEqual(result["total_borrowers"], 2)
+        self.assertEqual(result["needs_link_creation"], 1)
+        self.assertEqual(result["completed"], 1)
 
 if __name__ == "__main__":
     unittest.main()

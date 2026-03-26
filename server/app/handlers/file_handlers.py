@@ -7,7 +7,7 @@ class FileHandler:
         self.file_service = file_service
 
     async def handle_submit_files(self, request: SubmitFilesRequest) -> Dict[str, Any]:
-        return await self.file_service.submit_files(request.link_token)
+        return await self.file_service.submit_files(request)
     
     async def handle_analyze_files(self, request: AnalyzeFilesRequest, lender_id: str, background_tasks: BackgroundTasks):
         # 1. Trigger the 'Accepted' response and status update

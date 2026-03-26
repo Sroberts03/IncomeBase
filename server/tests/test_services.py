@@ -31,15 +31,27 @@ class TestFileService(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_submit_files_no_pending(self):
-        self.mock_file_dao.get_borrower_id_from_link_token = AsyncMock(return_value="b123")
+        from app.requests_responses.file_requests_responses import SubmitFilesRequest
+        self.mock_file_dao.get_borrower_data_from_link_token = AsyncMock(return_value={"borrower_id": "b123", "zip_code": "12345"})
         self.mock_file_dao.get_pending_records = AsyncMock(return_value=[])
         
-        result = await self.service.submit_files("token123")
+        request = SubmitFilesRequest(link_token="token123", zip_code="12345")
+        result = await self.service.submit_files(request)
         self.assertEqual(result["message"], "No pending files.")
         self.mock_file_dao.get_pending_records.assert_awaited_with("b123")
 
+    async def test_submit_files_zip_mismatch(self):
+        from app.requests_responses.file_requests_responses import SubmitFilesRequest
+        self.mock_file_dao.get_borrower_data_from_link_token = AsyncMock(return_value={"borrower_id": "b123", "zip_code": "12345"})
+        
+        request = SubmitFilesRequest(link_token="token123", zip_code="wrong_zip")
+        with self.assertRaises(Exception) as cm:
+            await self.service.submit_files(request)
+        self.assertIn("Zip code verification failed", str(cm.exception))
+
     async def test_submit_files_with_review_and_classification(self):
-        self.mock_file_dao.get_borrower_id_from_link_token = AsyncMock(return_value="b123")
+        from app.requests_responses.file_requests_responses import SubmitFilesRequest
+        self.mock_file_dao.get_borrower_data_from_link_token = AsyncMock(return_value={"borrower_id": "b123", "zip_code": "12345"})
         self.mock_file_dao.get_pending_records = AsyncMock(return_value=[{"id": "f1", "file_path": "path1"}])
         self.mock_file_dao.get_files = AsyncMock(return_value=[b"bytes1"])
         
@@ -66,7 +78,8 @@ class TestFileService(unittest.IsolatedAsyncioTestCase):
         
         self.mock_file_dao.update_file_classification = AsyncMock()
 
-        result = await self.service.submit_files("token123")
+        request = SubmitFilesRequest(link_token="token123", zip_code="12345")
+        result = await self.service.submit_files(request)
         
         self.assertEqual(len(result["review_results"]), 1)
         self.assertEqual(result["stats"]["successfully_classified"], 1)
@@ -182,6 +195,78 @@ class TestLenderService(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(Exception) as cm:
             await self.service.create_borrower("u123", request)
         self.assertEqual(str(cm.exception), "Failed to create borrower due to an internal error.")
+
+    async def test_generate_borrower_link_success(self):
+        from app.requests_responses.lender_requests_responses import GenerateLinkRequest
+        self.mock_lender_dao.check_borrower_ownership = AsyncMock(return_value=True)
+        self.mock_lender_dao.create_file_link = AsyncMock()
+        self.mock_lender_dao.update_borrower_status = AsyncMock()
+        
+        request = GenerateLinkRequest(borrower_id="b123")
+        result = await self.service.generate_borrower_link("u123", request)
+        
+        self.assertTrue(len(result.link_token) > 0)
+        self.mock_lender_dao.create_file_link.assert_awaited()
+        self.mock_lender_dao.update_borrower_status.assert_awaited_with("b123", "Link Created")
+
+    async def test_generate_borrower_link_unauthorized(self):
+        from app.requests_responses.lender_requests_responses import GenerateLinkRequest
+        self.mock_lender_dao.check_borrower_ownership = AsyncMock(return_value=False)
+        
+        request = GenerateLinkRequest(borrower_id="b123")
+        with self.assertRaises(Exception) as cm:
+            await self.service.generate_borrower_link("u123", request)
+        self.assertIn("Unauthorized", str(cm.exception))
+
+    async def test_verify_borrower_zip_success(self):
+        from app.requests_responses.lender_requests_responses import VerifyZipRequest
+        self.mock_lender_dao.get_borrower_by_link_token = AsyncMock(return_value={
+            "borrower_id": "b123",
+            "borrowers": {"full_name": "Test User", "zip_code": "12345"}
+        })
+        
+        request = VerifyZipRequest(link_token="token123", zip_code="12345")
+        result = await self.service.verify_borrower_zip(request)
+        
+        self.assertTrue(result.valid)
+        self.assertEqual(result.borrower_name, "Test User")
+
+    async def test_verify_borrower_zip_failure(self):
+        from app.requests_responses.lender_requests_responses import VerifyZipRequest
+        self.mock_lender_dao.get_borrower_by_link_token = AsyncMock(return_value={
+            "borrower_id": "b123",
+            "borrowers": {"full_name": "Test User", "zip_code": "12345"}
+        })
+        
+        request = VerifyZipRequest(link_token="token123", zip_code="54321")
+        result = await self.service.verify_borrower_zip(request)
+        
+        self.assertFalse(result.valid)
+        self.assertIn("Verification failed", result.message)
+
+    async def test_get_dashboard_data_success(self):
+        self.mock_lender_dao.get_org_id_for_lender = AsyncMock(return_value="org123")
+        self.mock_lender_dao.get_dashboard_stats = AsyncMock(return_value={
+            "total_borrowers": 10,
+            "needs_link_creation": 2,
+            "link_created": 3,
+            "docs_submitted": 4,
+            "completed": 1
+        })
+        
+        result = await self.service.get_dashboard_data("u123")
+        self.assertEqual(result.total_borrowers, 10)
+        self.assertEqual(result.completed, 1)
+
+    async def test_get_borrowers_success(self):
+        self.mock_lender_dao.get_org_id_for_lender = AsyncMock(return_value="org123")
+        self.mock_lender_dao.get_borrowers_for_org = AsyncMock(return_value=[
+            {"borrower_id": "b1", "full_name": "User 1", "email": "u1@e.com", "status": "Completed", "created_at": "now"}
+        ])
+        
+        result = await self.service.get_borrowers("u123")
+        self.assertEqual(len(result.borrowers), 1)
+        self.assertEqual(result.borrowers[0].full_name, "User 1")
 
 if __name__ == "__main__":
     unittest.main()

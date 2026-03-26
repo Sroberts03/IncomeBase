@@ -9,12 +9,17 @@ class FileDao:
     def __init__(self, supabase):
         self.supabase = supabase
     
-    async def get_borrower_id_from_link_token(self, link_token: str) -> str:
+    async def get_borrower_data_from_link_token(self, link_token: str) -> Dict[str, Any]:
+        """Fetches borrower_id and zip_code associated with a link token."""
         res = await self.supabase.table("file_links") \
-            .select("borrower_id").eq("link_token", link_token) \
+            .select("borrower_id, borrowers(zip_code)").eq("link_token", link_token) \
             .execute()
         if res.data and len(res.data) > 0:
-            return res.data[0]["borrower_id"]
+            data = res.data[0]
+            return {
+                "borrower_id": data["borrower_id"],
+                "zip_code": data["borrowers"]["zip_code"]
+            }
         else:
             raise ValueError("Invalid link token")
 

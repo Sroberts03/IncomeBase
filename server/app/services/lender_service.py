@@ -1,6 +1,17 @@
 import logging
-from datetime import datetime, timezone
-from app.requests_responses.lender_requests_responses import CreateBorrowerRequest, CreateBorrowerResponse
+import secrets
+from datetime import datetime, timezone, timedelta
+from app.requests_responses.lender_requests_responses import (
+    CreateBorrowerRequest, 
+    CreateBorrowerResponse,
+    GenerateLinkRequest,
+    GenerateLinkResponse,
+    VerifyZipRequest,
+    VerifyZipResponse,
+    DashboardStatsResponse,
+    GetBorrowersResponse,
+    BorrowerSummary
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,4 +51,57 @@ class LenderService:
             if "authorized" in str(e).lower():
                 raise
             raise Exception("Failed to create borrower due to an internal error.")
+
+    async def generate_borrower_link(self, current_user_id: str, request: GenerateLinkRequest) -> GenerateLinkResponse:
+        """Generates a unique, expiring link for a borrower."""
+        # Security Check
+        is_owner = await self.lender_dao.check_borrower_ownership(request.borrower_id, current_user_id)
+        if not is_owner:
+            raise Exception("Unauthorized: This borrower record does not belong to you.")
+
+        link_token = secrets.token_urlsafe(32)
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+
+        await self.lender_dao.create_file_link(request.borrower_id, link_token, expires_at)
+        await self.lender_dao.update_borrower_status(request.borrower_id, "Link Created")
+
+        return GenerateLinkResponse(link_token=link_token, expires_at=expires_at)
+
+    async def verify_borrower_zip(self, request: VerifyZipRequest) -> VerifyZipResponse:
+        """Verifies a zip code against a link token to grant document upload access."""
+        borrower_data = await self.lender_dao.get_borrower_by_link_token(request.link_token)
+        
+        if not borrower_data:
+            return VerifyZipResponse(valid=false, message="Invalid or expired link.")
+
+        # In Supabase/PostgREST, nested joins return a dict
+        borrower_info = borrower_data.get("borrowers")
+        if not borrower_info or borrower_info.get("zip_code") != request.zip_code:
+            logger.warning(f"Zip verification failed for token {request.link_token[:8]}")
+            return VerifyZipResponse(valid=False, message="Verification failed. Please check your zip code.")
+
+        return VerifyZipResponse(
+            valid=True, 
+            borrower_name=borrower_info.get("full_name"),
+            message="Verification successful."
+        )
+
+    async def get_dashboard_data(self, current_user_id: str) -> DashboardStatsResponse:
+        """Fetches aggregated statistics for the lender's dashboard."""
+        org_id = await self.lender_dao.get_org_id_for_lender(current_user_id)
+        if not org_id:
+            raise Exception("Lender is not associated with an organization.")
+        
+        stats_dict = await self.lender_dao.get_dashboard_stats(org_id)
+        return DashboardStatsResponse(**stats_dict)
+
+    async def get_borrowers(self, current_user_id: str) -> GetBorrowersResponse:
+        """Fetches a list of all borrowers for the lender's organization."""
+        org_id = await self.lender_dao.get_org_id_for_lender(current_user_id)
+        if not org_id:
+            raise Exception("Lender is not associated with an organization.")
+
+        borrowers_list = await self.lender_dao.get_borrowers_for_org(org_id)
+        summaries = [BorrowerSummary(**b) for b in borrowers_list]
+        return GetBorrowersResponse(borrowers=summaries)
         

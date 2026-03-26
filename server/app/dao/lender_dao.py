@@ -40,3 +40,62 @@ class LenderDao:
             .update({"status": status}) \
             .eq("borrower_id", borrower_id) \
             .execute()
+
+    async def create_file_link(self, borrower_id: str, link_token: str, expires_at: str):
+        """Inserts or updates a file link for a borrower."""
+        await self.db.table("file_links").upsert({
+            "borrower_id": borrower_id,
+            "link_token": link_token,
+            "expires_at": expires_at
+        }, on_conflict="borrower_id").execute()
+
+    async def get_borrower_by_link_token(self, link_token: str):
+        """Fetches borrower details associated with a link token."""
+        # Join file_links with borrowers
+        res = await self.db.table("file_links") \
+            .select("borrower_id, borrowers(full_name, zip_code)") \
+            .eq("link_token", link_token) \
+            .execute()
+        
+        if res.data and len(res.data) > 0:
+            return res.data[0]
+        return None
+
+    async def get_borrowers_for_org(self, org_id: str):
+        """Fetches all borrowers for a given organization."""
+        res = await self.db.table("borrowers") \
+            .select("borrower_id, full_name, email, status, created_at") \
+            .eq("org_id", org_id) \
+            .order("created_at", desc=True) \
+            .execute()
+        return res.data or []
+
+    async def get_dashboard_stats(self, org_id: str):
+        """Fetches status counts for a given organization."""
+        res = await self.db.table("borrowers") \
+            .select("status") \
+            .eq("org_id", org_id) \
+            .execute()
+        
+        stats = {
+            "total_borrowers": 0,
+            "needs_link_creation": 0,
+            "link_created": 0,
+            "docs_submitted": 0,
+            "completed": 0
+        }
+        
+        if res.data:
+            stats["total_borrowers"] = len(res.data)
+            for row in res.data:
+                status = row["status"]
+                if status == "Needs Link Creation":
+                    stats["needs_link_creation"] += 1
+                elif status == "Link Created":
+                    stats["link_created"] += 1
+                elif status in ["Docs Submitted", "Analyzing"]:
+                    stats["docs_submitted"] += 1
+                elif status == "Completed":
+                    stats["completed"] += 1
+        
+        return stats

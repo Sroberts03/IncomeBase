@@ -4,7 +4,7 @@ from models.file_review_schema import IndividualFileResult
 
 class SubmitFilesRequest(BaseModel):
     link_token: str 
-
+    zip_code: str
 class AnalyzeFilesRequest(BaseModel):
     borrower_id: str
 

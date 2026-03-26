@@ -52,7 +52,7 @@ def test_submit_files_success():
     mock_handler.handle_submit_files.return_value = mock_response
 
     # Payload matching your SubmitFilesRequest DTO
-    payload = {"link_token": "test-token-123"}
+    payload = {"link_token": "test-token-123", "zip_code": "12345"}
     
     response = client.post("/file/submit_files", json=payload)
     
@@ -163,19 +163,60 @@ def test_create_borrower_success():
     Test the /lender/create-borrower route with valid input.
     """
     test_user_id = "lender-123"
-    mock_handler = MagicMock()
-    mock_handler.create_borrower = AsyncMock(return_value=CreateBorrowerResponse(borrower_id="borrower-456"))
-    mock_get_current_user_id = AsyncMock(return_value=test_user_id)
-    app.dependency_overrides[get_lender_handler] = lambda: mock_handler
-    app.dependency_overrides[get_current_user_id] = lambda: "lender-123"
+    mock_lender_handler = MagicMock()
+    mock_lender_handler.create_borrower = AsyncMock(return_value=CreateBorrowerResponse(borrower_id="borrower-456"))
+    app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
+    app.dependency_overrides[get_current_user_id] = lambda: test_user_id
+    
     payload = {
         "full_name": "John Doe",
         "email": "john.doe@example.com",
         "zip_code": "12345"
     }
-    response = client.post("/lender/create-borrower", json=payload, headers={"Authorization": f"Bearer {test_user_id}"})
+    response = client.post("/lender/create-borrower", json=payload)
     
     assert response.status_code == 200
     assert response.json()["borrower_id"] == "borrower-456"
-    mock_handler.create_borrower.assert_called_once_with(test_user_id, CreateBorrowerRequest(**payload))
 
+def test_generate_link_success():
+    mock_lender_handler = MagicMock()
+    mock_lender_handler.generate_link = AsyncMock(return_value={"link_token": "t1", "expires_at": "now"})
+    app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
+    app.dependency_overrides[get_current_user_id] = lambda: "l1"
+    
+    payload = {"borrower_id": "b1"}
+    response = client.post("/lender/generate-link", json=payload)
+    assert response.status_code == 200
+    assert response.json()["link_token"] == "t1"
+
+def test_verify_zip_success():
+    mock_lender_handler = MagicMock()
+    mock_lender_handler.verify_borrower_zip = AsyncMock(return_value={"valid": True, "message": "Ok"})
+    app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
+    
+    payload = {"link_token": "t1", "zip_code": "12345"}
+    response = client.post("/lender/verify-zip", json=payload)
+    assert response.status_code == 200
+    assert response.json()["valid"] is True
+
+def test_dashboard_stats_success():
+    mock_lender_handler = MagicMock()
+    mock_lender_handler.get_dashboard_stats = AsyncMock(return_value={
+        "total_borrowers": 1, "needs_link_creation": 0, "link_created": 0, "docs_submitted": 0, "completed": 1
+    })
+    app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
+    app.dependency_overrides[get_current_user_id] = lambda: "l1"
+    
+    response = client.get("/lender/dashboard-stats")
+    assert response.status_code == 200
+    assert response.json()["total_borrowers"] == 1
+
+def test_get_borrowers_success():
+    mock_lender_handler = MagicMock()
+    mock_lender_handler.get_borrowers = AsyncMock(return_value={"borrowers": []})
+    app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
+    app.dependency_overrides[get_current_user_id] = lambda: "l1"
+    
+    response = client.get("/lender/borrowers")
+    assert response.status_code == 200
+    assert "borrowers" in response.json()

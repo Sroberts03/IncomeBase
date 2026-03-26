@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, List
 from models.file_review_schema import BatchFileReview
 from models.extraction_schema import IndividualFileExtraction
+from app.requests_responses.file_requests_responses import SubmitFilesRequest
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -23,13 +24,21 @@ class FileService:
         self.data_preparer = data_preparer
         self.lender_dao = lender_dao
 
-    async def submit_files(self, link_token: str) -> Dict[str, Any]:
+    async def submit_files(self, request: SubmitFilesRequest) -> Dict[str, Any]:
         """
         Submits files for review and then classification.
         Returns a detailed summary of the batch processing.
         """
-        logger.info(f"Starting file submission for token: {link_token[:8]}...")
-        borrower_id = await self.file_dao.get_borrower_id_from_link_token(link_token)
+        logger.info(f"Starting file submission for token: {request.link_token[:8]}...")
+        
+        borrower_data = await self.file_dao.get_borrower_data_from_link_token(request.link_token)
+        borrower_id = borrower_data["borrower_id"]
+        
+        # Zip Code Verification (Final Security Check)
+        if borrower_data["zip_code"] != request.zip_code:
+            logger.warning(f"Security Alert: Zip verification failed during file submission for borrower {borrower_id}")
+            raise Exception("Unauthorized: Zip code verification failed.")
+
         pending_records = await self.file_dao.get_pending_records(borrower_id)
         
         if not pending_records:
