@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 class ClassifyFile(BaseModel):
-    file_name: str = Field(..., description="The name of the file to classify")
+    file_name: str = Field(..., description="Name based off the file content, not necessarily the original file name")
     classification: Literal["w2", "1099", "bank_statement", "institution_report"]
     source: Literal["stripe", "plaid", "shopify", "paypal", "amazon_seller", "upwork/fiverr", "bank", "other"]
     reasoning: str = Field(..., description="The reasoning behind the classification decision")

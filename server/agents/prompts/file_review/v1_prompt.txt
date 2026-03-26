@@ -24,3 +24,7 @@ and relevance to proceed to automated data extraction. You will receive a series
 Your response must be a single JSON object. For every file index provided in the input 
 (e.g., File 0, File 1), you MUST generate a corresponding entry in the results list. 
 Do not aggregate files; treat every index as a unique entity.
+
+### CRITICAL: 
+You must provide a result for every single file index provided (0 through {n}). 
+Even if a file is rejected, it must have an entry in the results list with the correct file_index

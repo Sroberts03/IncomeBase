@@ -7,17 +7,28 @@ class FileService:
         self.file_review_agent = file_review_agent
         self.classifier_agent = classifier_agent
 
-    async def upload_files(self, file_paths: list[str]) -> BatchFileReview:
-        # 1. Get raw bytes from Supabase via DAO
-        files_bytes = await self.file_dao.get_files(file_paths)
+    async def batch_process_files(self, link_token: str) -> BatchFileReview:
+        borrower_id = await self.file_dao.get_borrower_id_from_link_token(link_token)
+        pending_records = await self.file_dao.get_pending_records(borrower_id)
         
-        # 2. Convert raw bytes to base64 strings
-        base64_files = []
-        for content in files_bytes:
-            # We don't need 'open()', content is already the bytes!
-            encoded = base64.b64encode(content).decode("utf-8")
-            base64_files.append(encoded)
-            
-        # 3. Pass to the Agent
-        review_result = await self.file_review_agent.review(base64_files)
-        return review_result
+        if not pending_records:
+            return BatchFileReview(results=[], overall_summary="No pending files.")
+
+        files = await self.file_dao.get_files([r["file_path"] for r in pending_records])
+        files_base64 = [base64.b64encode(f).decode("utf-8") for f in files]
+        
+        review = await self.file_review_agent.review(files_base64)
+        
+        # Filter and Process
+        for file_review in review.results:
+            if file_review.status == "approved":
+                idx = file_review.file_index
+                file_id = pending_records[idx]["id"]
+                
+                target_b64 = files_base64[idx]
+                
+                classification = await self.classifier_agent.classify(target_b64)
+                
+                await self.file_dao.update_file_classification(borrower_id, classification, file_id)
+                
+        return review

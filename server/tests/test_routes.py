@@ -2,39 +2,55 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 from main import app
-from app.api.v1.file_routes import get_file_handler # Import the actual dependency function
+from app.api.v1.file_routes import get_file_handler
 
 client = TestClient(app)
 
-# 1. Create a "Fake" Handler
+# 1. Create the Mock Handler
 mock_handler = MagicMock()
-mock_handler.handle_upload_file = AsyncMock()
+# Match your new method name: handle_batch_process
+mock_handler.handle_batch_process = AsyncMock()
 
-# 2. This is the "Magic" fix
-# This tells FastAPI: "Whenever someone asks for get_file_handler, give them our mock instead"
+# 2. Apply Dependency Override
 app.dependency_overrides[get_file_handler] = lambda: mock_handler
 
-def test_upload_file_route_success():
-    # Setup the mock behavior
+def test_batch_process_success():
+    """
+    Test the /file/batch-process route with a valid link token.
+    """
+    # Setup the mock behavior to return a BatchFileReview-like dict
     mock_response = {
-        "results": [],
-        "overall_summary": "Test Passed",
-        "agent_name": "test_agent"
+        "results": [
+            {
+                "file_index": 0,
+                "status": "approved",
+                "borrower_message": "Perfect",
+                "reasoning": "Clear document",
+                "confidence": 0.98
+            }
+        ],
+        "overall_summary": "All documents processed successfully",
+        "agent_name": "file_review_v1"
     }
-    mock_handler.handle_upload_file.return_value = mock_response
+    mock_handler.handle_batch_process.return_value = mock_response
 
-    payload = {"file_paths": ["test.jpg"]}
+    # New payload matching your BatchProcessRequest DTO
+    payload = {"link_token": "test-token-123"}
     
-    response = client.post("/file/upload", json=payload)
+    # Updated URL to /file/batch-process
+    response = client.post("/file/batch-process", json=payload)
     
     assert response.status_code == 200
-    assert response.json()["overall_summary"] == "Test Passed"
+    assert response.json()["overall_summary"] == "All documents processed successfully"
+    # Verify the handler was called with the correct token
+    mock_handler.handle_batch_process.assert_called_once()
 
-def test_upload_file_no_paths():
-    # This should now reach the handler or fail validation correctly
-    payload = {"file_paths": []}
-    response = client.post("/file/upload", json=payload)
+def test_batch_process_invalid_token():
+    """
+    Test that the route handles a missing link token (Pydantic validation).
+    """
+    payload = {} # Missing 'link_token'
+    response = client.post("/file/batch-process", json=payload)
     
-    # If your DTO has min_length=1, this will be 422
-    # If not, it will be 200 (if the mock handles it)
-    assert response.status_code in [200, 422]
+    # FastAPI/Pydantic returns 422 for missing required fields
+    assert response.status_code == 422

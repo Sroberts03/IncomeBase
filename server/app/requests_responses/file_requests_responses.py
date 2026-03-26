@@ -1,4 +1,4 @@
 from pydantic import BaseModel, Field
 
-class UploadFileRequest(BaseModel):
-    file_paths: list[str]    
+class BatchProcessRequest(BaseModel):
+    link_token: str  
