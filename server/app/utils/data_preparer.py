@@ -1,6 +1,9 @@
+import logging
 from collections import defaultdict
 from datetime import datetime
 from models.extraction_schema import IndividualFileExtraction
+
+logger = logging.getLogger(__name__)
 
 class DataPreparer:
     @staticmethod
@@ -16,7 +19,7 @@ class DataPreparer:
         total_expenses = 0.0
         
         for extraction in extractions:
-            summary += f"File index: {extraction.file_index}\n"
+            summary += f"File ID: {extraction.file_id}\n"
             summary += f"Account Holder: {extraction.extracted_data.account_holder}\n"
             summary += f"Institution: {extraction.extracted_data.institution}\n"
             summary += f"Statement Period: {extraction.extracted_data.statement_period}\n"
@@ -63,5 +66,5 @@ class DataPreparer:
         summary += f"CALCULATED_MONTHLY_AVERAGE: ${avg_income:.2f}\n"
         summary += f"CALCULATED_NET_BURN_RATE: ${net_burn:.2f}\n"
         
-        print(summary) 
+        logger.debug(summary) 
         return summary

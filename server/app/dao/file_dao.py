@@ -1,8 +1,11 @@
+import asyncio
 from typing import Iterable, Dict, Any
 from models.classifier_schema import SingleClassifyFile
 
 
 class FileDao:
+    BUCKET_NAME = "borrower-files"
+
     def __init__(self, supabase):
         self.supabase = supabase
     
@@ -24,11 +27,13 @@ class FileDao:
         return res.data or []
       
     async def get_files(self, file_paths: list[str]) -> list[bytes]:
-        files_bytes = []
-        for path in file_paths:
-            res = await self.supabase.storage.from_("borrower-files").download(path)
-            files_bytes.append(res.content)
-        return files_bytes
+        """Downloads multiple files from storage in parallel."""
+        async def download_one(path):
+            res = await self.supabase.storage.from_(self.BUCKET_NAME).download(path)
+            return res.content
+            
+        tasks = [download_one(path) for path in file_paths]
+        return await asyncio.gather(*tasks)
     
     async def update_file_classification(self, borrower_id: str, classification: SingleClassifyFile, file_id: str):
         await self.supabase.table("files").update({
@@ -81,7 +86,10 @@ class FileDao:
             **analysis_results 
         }
         
-        # 2. Pass the single, combined dictionary into .insert()
-        response = await self.supabase.table("borrower_analysis").insert(payload).execute()
+        # 2. Use upsert to prevent duplicate analysis entries for the same borrower
+        response = await self.supabase.table("borrower_analysis").upsert(
+            payload, 
+            on_conflict="borrower_id"
+        ).execute()
         
         return response

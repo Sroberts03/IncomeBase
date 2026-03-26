@@ -14,6 +14,12 @@ from app.handlers.file_handlers import FileHandler
 from app.services.file_services import FileService
 from app.dao.file_dao import FileDao
 from app.utils.data_preparer import DataPreparer
+from app.utils.document_parser import DocumentParser
+
+# lender
+from app.dao.lender_dao import LenderDao
+from app.services.lender_service import LenderService
+from app.handlers.lender_handler import LenderHandler
 
 # supabase
 from supabase import create_async_client
@@ -38,6 +44,9 @@ class AppContainer:
         self.file_dao = None
         self.file_service = None
         self.file_handler = None
+        self.lender_dao = None
+        self.lender_service = None
+        self.lender_handler = None
         self.data_preparer = None
         self.parser = None
 
@@ -49,10 +58,15 @@ class AppContainer:
         self.analysis_agent = AnalysisAgent(client=self.ai_client)
         self.reasoning_review_agent = ReasoningReviewAgent(client=self.ai_client)
 
-        # files
-        self.data_preparer = DataPreparer()
-        self.parser = Parser()
+        # DAOs
         self.file_dao = FileDao(supabase=self.supabase)
+        self.lender_dao = LenderDao(supabase=self.supabase)
+
+        # Utils
+        self.data_preparer = DataPreparer()
+        self.parser = DocumentParser()
+
+        # services
         self.file_service = FileService(
             file_dao=self.file_dao,
             file_review_agent=self.file_review_agent,
@@ -61,9 +75,14 @@ class AppContainer:
             analyzer_agent=self.analysis_agent,
             review_agent=self.reasoning_review_agent,
             parser=self.parser,
-            data_preparer=self.data_preparer
+            data_preparer=self.data_preparer,
+            lender_dao=self.lender_dao
         )
-        self.file_handler = FileHandler(service=self.file_service)
+        self.lender_service = LenderService(lender_dao=self.lender_dao)
+
+        # handlers
+        self.file_handler = FileHandler(file_service=self.file_service)
+        self.lender_handler = LenderHandler(lender_service=self.lender_service)
 
 
 container = AppContainer()
