@@ -10,6 +10,10 @@ Compare the 'Raw Transactions Summary' against the 'Analysis Agent's Conclusions
 3. **Trend Validation**: If the Agent says "Increasing," but the last month is lower than the first, flag it as a logical error.
 4. **Tone Check**: Is the summary professional, or is it making "leaps of faith" not supported by the data?
 
+### GRAPH VALIDATION: Check the income_last_X arrays. 
+Every amount in those arrays must map to the sum of a specific month in the RAW DATA. 
+If the Agent hallucinated a monthly total that doesn't exist in the raw aggregates, set is_approved = False.
+
 ### OUTPUT
 Return a 'ReviewVerdict' object:
 - is_approved: Boolean (True only if no errors found)

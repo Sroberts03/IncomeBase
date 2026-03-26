@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Literal
 
 class IndividualFileResult(BaseModel):
-    file_index: int = Field(..., description="The index of the file in the input list")
+    file_id: str = Field(..., description="the uuid of the file being reviewed")
     status: Literal["approved", "rejected"]
     borrower_message: str = Field(..., description="Helpful message for the user")
     reasoning: str = Field(..., description="Internal technical reasoning")

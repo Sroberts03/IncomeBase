@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 from datetime import date
 
 # 1. This defines EXACTLY what a transaction looks like
@@ -19,12 +19,8 @@ class DocumentData(BaseModel):
 
 # 3. This integrates into your Batch result
 class IndividualFileExtraction(BaseModel):
-    file_index: int
+    file_id: str = Field(..., description="the uuid of the file being extracted")
+    file_name: str = Field(..., description="the original name of the file being extracted")
     extracted_data: DocumentData
     reasoning: str
     confidence: float
-
-class BatchExtractionResult(BaseModel):
-    results: List[IndividualFileExtraction]
-    overall_summary: str
-    agent_name: str = Field(default="extraction_agent_v1")

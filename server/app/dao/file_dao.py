@@ -1,4 +1,5 @@
-from models.classifier_schema import ClassifyFile
+from typing import Iterable, Dict, Any
+from models.classifier_schema import SingleClassifyFile
 
 
 class FileDao:
@@ -6,14 +7,16 @@ class FileDao:
         self.supabase = supabase
     
     async def get_borrower_id_from_link_token(self, link_token: str) -> str:
-        res = self.supabase.table("file_links").select("borrower_id").eq("link_token", link_token).execute()
+        res = await self.supabase.table("file_links") \
+            .select("borrower_id").eq("link_token", link_token) \
+            .execute()
         if res.data and len(res.data) > 0:
             return res.data[0]["borrower_id"]
         else:
             raise ValueError("Invalid link token")
 
     async def get_pending_records(self, borrower_id: str):
-        res = self.supabase.table("files") \
+        res = await self.supabase.table("files") \
             .select("id, file_path") \
             .eq("borrower_id", borrower_id) \
             .eq("needs_to_be_processed", True) \
@@ -23,19 +26,62 @@ class FileDao:
     async def get_files(self, file_paths: list[str]) -> list[bytes]:
         files_bytes = []
         for path in file_paths:
-            res = self.supabase.storage.from_("borrower-files").download(path)
+            res = await self.supabase.storage.from_("borrower-files").download(path)
             files_bytes.append(res.content)
         return files_bytes
     
-    async def update_file_classification(self, borrower_id: str, classification: ClassifyFile, file_id: str):
-        self.supabase.table("files").update({
+    async def update_file_classification(self, borrower_id: str, classification: SingleClassifyFile, file_id: str):
+        await self.supabase.table("files").update({
             "classification": classification.classification,
             "source": classification.source,
             "file_name": classification.file_name,
             "needs_to_be_processed": False
         }).eq("id", file_id).execute()
-        self.supabase.table("reasoning_logs").insert({
+        await self.supabase.table("reasoning_logs").insert({
             "borrower_id": borrower_id,
             "agent": "classifier",
             "raw_reasoning": classification.reasoning,
         }).execute()
+
+    async def get_files_for_borrower(self, borrower_id: str):
+        res = await self.supabase.table("files") \
+            .select("*") \
+            .eq("borrower_id", borrower_id) \
+            .eq("needs_to_be_processed", False) \
+            .execute()
+        return res.data or []
+    
+    async def bulk_insert_line_items(self, items: Iterable[Dict[str, Any]]) -> int:
+        """
+        Pure DB operation: Safely chunks and inserts raw dictionaries into Supabase.
+        """
+        BATCH_SIZE = 1000
+        current_batch = []
+        total_inserted = 0
+        
+        for item in items:
+            current_batch.append(item)
+            
+            if len(current_batch) == BATCH_SIZE:
+                await self.supabase.table("line_items").insert(current_batch).execute()
+                total_inserted += len(current_batch)
+                current_batch.clear()
+
+        # Catch remaining
+        if current_batch:
+            await self.supabase.table("line_items").insert(current_batch).execute()
+            total_inserted += len(current_batch)
+
+        return total_inserted
+    
+    async def save_analysis_results(self, analysis_results: dict, borrower_id: str):
+        # 1. Merge the borrower_id into the existing dictionary
+        payload = {
+            "borrower_id": borrower_id,
+            **analysis_results 
+        }
+        
+        # 2. Pass the single, combined dictionary into .insert()
+        response = await self.supabase.table("borrower_analysis").insert(payload).execute()
+        
+        return response

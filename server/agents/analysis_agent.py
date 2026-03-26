@@ -11,11 +11,15 @@ class AnalysisAgent(BaseAgent):
             agent_name="analysis",
             version="v1"
         )
-    async def analyze(self, financial_context: str) -> AnalysisResult:
+    async def analyze(self, financial_context: str, corrections: str = None) -> AnalysisResult:
         """Sends the prepared text summary to the AI for risk assessment."""
         prompt = self.load_prompt()
         
-        user_content = f"Please perform a deep credit analysis on this borrower data:\n\n{financial_context}"
+        user_content = f"Please perform a deep credit analysis on this borrower data:\n\n{financial_context}, and provide a structured output."
+
+        if corrections:
+            user_content += f"\n\nAlso, please take into account these corrections from the auditor:\n{corrections}"
+            user_content += "\n\nIt is CRITICAL to incorporate these corrections into your final analysis."
 
         # Structured Output ensures the response matches your borrower_analysis table
         response = await self.get_structured_response(
