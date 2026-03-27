@@ -99,3 +99,11 @@ class LenderDao:
                     stats["completed"] += 1
         
         return stats
+    
+    async def get_borrower_status(self, borrower_id: str, new_status: str = None):
+        """Fetches the current status of a borrower, optionally updating it."""
+        if new_status:
+            await self.db.table("borrowers") \
+                .update({"status": new_status}) \
+                .eq("borrower_id", borrower_id) \
+                .execute()

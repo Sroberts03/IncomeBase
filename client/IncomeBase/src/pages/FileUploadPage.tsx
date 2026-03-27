@@ -1,51 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import fileFacade from '../api/fileFacade';
-import { supabase } from '../api/supabaseClient';
 
 const FileUploadPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [files, setFiles] = useState<File[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [borrowerId, setBorrowerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-
   const zipCode = sessionStorage.getItem('verifiedZip');
 
   useEffect(() => {
     if (!zipCode) {
-      navigate(`/verify/${token}`);
-      return;
+      navigate('/verify/' + token);
     }
-
-    // Get borrower ID from token (we need it for storage path)
-    const fetchBorrowerId = async () => {
-      const { data, error } = await supabase
-        .from('file_links')
-        .select('borrower_id')
-        .eq('link_token', token)
-        .single();
-      
-      if (error) {
-        setError('Invalid link or session expired.');
-      } else {
-        setBorrowerId(data.borrower_id);
-      }
-    };
-
-    fetchBorrowerId();
   }, [token, zipCode, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+    const fileList = e.target.files;
+    if (fileList && fileList.length > 0) {
+      setFiles(prev => [...prev, ...Array.from(fileList)]);
     }
   };
 
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
+    }
+  };
+
+  const handleRemoveFile = (idx: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleBrowseFiles = () => {
+    inputRef.current?.click();
+  };
+
   const handleUploadAndSubmit = async () => {
-    if (!borrowerId || !token || !zipCode) return;
+    if (!token || !zipCode) return;
     if (files.length === 0) {
       setError('Please select at least one file.');
       return;
@@ -56,7 +67,8 @@ const FileUploadPage: React.FC = () => {
 
     try {
       // 1. Upload each file to Supabase Storage
-      await Promise.all(files.map(file => fileFacade.uploadFile(borrowerId, file)));
+      const fileUUID = crypto.randomUUID().replace(/-/g, '');
+      await Promise.all(files.map(file => fileFacade.uploadFile(file, zipCode, fileUUID, token)));
       
       setUploading(false);
       setSubmitting(true);
@@ -85,24 +97,56 @@ const FileUploadPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Upload Your Documents</h1>
         <p className="text-gray-600 mb-6 text-center">Please upload your bank statements and W2s for analysis.</p>
 
-        <div className="w-full mb-4">
+        {/* Drag-and-drop area */}
+        <div
+          className={`w-full mb-4 border-2 border-dashed rounded-lg transition-colors duration-200 flex flex-col items-center justify-center cursor-pointer ${dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-300'}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={handleBrowseFiles}
+          style={{ minHeight: 120 }}
+        >
           <input
+            ref={inputRef}
             type="file"
             multiple
             onChange={handleFileChange}
             accept=".pdf,.jpg,.jpeg,.png"
             disabled={uploading || submitting}
-            className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="hidden"
           />
+          <div className="flex flex-col items-center">
+            <svg className="w-10 h-10 text-blue-400 mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16v-4a4 4 0 018 0v4m-4 4v-4m0 0V8m0 4H5m14 0h-4" /></svg>
+            <span className="text-gray-500 text-sm">Drag & drop files here or <span className="text-blue-600 underline">browse</span></span>
+            <span className="text-xs text-gray-400 mt-1">(PDF, JPG, PNG, JPEG)</span>
+          </div>
         </div>
 
+        {/* File list with remove option */}
         {files.length > 0 && (
           <div className="w-full mb-4">
             <ul className="text-sm text-gray-700">
               {files.map((file, idx) => (
-                <li key={idx} className="flex justify-between border-b border-gray-100 py-1">
-                  <span>{file.name}</span>
-                  <span className="text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                <li key={idx} className="flex items-center justify-between border-b border-gray-100 py-1 gap-2">
+                  <span className="flex items-center gap-2">
+                    {file.type.startsWith('image') ? (
+                      <img src={URL.createObjectURL(file)} alt={file.name} className="w-6 h-6 object-cover rounded" />
+                    ) : (
+                      <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16v-4a4 4 0 018 0v4m-4 4v-4m0 0V8m0 4H5m14 0h-4" /></svg>
+                    )}
+                    <span>{file.name}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                    <button
+                      type="button"
+                      className="ml-2 text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded"
+                      onClick={e => { e.stopPropagation(); handleRemoveFile(idx); }}
+                      disabled={uploading || submitting}
+                    >
+                      Remove
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>

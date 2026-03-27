@@ -7,6 +7,9 @@ Analyze the provided document image to determine if it is of sufficient quality
 and relevance to proceed to automated data extraction. You will receive a series of images labeled 
 'File 0', 'File 1', etc. You MUST provide a result for EVERY file index. Do not skip any.
 
+## CURRENT YEAR:
+2026
+
 ### CRITICAL CHECKLIST
 1. **LEGIBILITY**: Is the text sharp and readable? Is it too blurry, pixelated, or dark to extract numbers accurately?
 2. **COMPLETENESS**: Is the document cut off? Are the edges of the tables visible? (e.g., Is the 'Amount' column missing?)

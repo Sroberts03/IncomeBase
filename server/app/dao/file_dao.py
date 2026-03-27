@@ -4,7 +4,7 @@ from models.classifier_schema import SingleClassifyFile
 
 
 class FileDao:
-    BUCKET_NAME = "borrower-files"
+    BUCKET_NAME = "documents"
 
     def __init__(self, supabase):
         self.supabase = supabase
@@ -23,10 +23,12 @@ class FileDao:
         else:
             raise ValueError("Invalid link token")
 
-    async def get_pending_records(self, borrower_id: str):
+    async def get_pending_records(self, link_token: str):
+        # First, get the borrower_id from the link token
+
         res = await self.supabase.table("files") \
             .select("id, file_path") \
-            .eq("borrower_id", borrower_id) \
+            .eq("link_token", link_token) \
             .eq("needs_to_be_processed", True) \
             .execute()
         return res.data or []
@@ -35,13 +37,14 @@ class FileDao:
         """Downloads multiple files from storage in parallel."""
         async def download_one(path):
             res = await self.supabase.storage.from_(self.BUCKET_NAME).download(path)
-            return res.content
+            return res
             
         tasks = [download_one(path) for path in file_paths]
         return await asyncio.gather(*tasks)
     
     async def update_file_classification(self, borrower_id: str, classification: SingleClassifyFile, file_id: str):
         await self.supabase.table("files").update({
+            "borrower_id": borrower_id,
             "classification": classification.classification,
             "source": classification.source,
             "file_name": classification.file_name,
@@ -98,3 +101,4 @@ class FileDao:
         ).execute()
         
         return response
+    

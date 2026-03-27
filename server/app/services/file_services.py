@@ -30,24 +30,36 @@ class FileService:
         Returns a detailed summary of the batch processing.
         """
         logger.info(f"Starting file submission for token: {request.link_token[:8]}...")
-        
+
         borrower_data = await self.file_dao.get_borrower_data_from_link_token(request.link_token)
+
         borrower_id = borrower_data["borrower_id"]
         
         # Zip Code Verification (Final Security Check)
         if borrower_data["zip_code"] != request.zip_code:
             logger.warning(f"Security Alert: Zip verification failed during file submission for borrower {borrower_id}")
             raise Exception("Unauthorized: Zip code verification failed.")
-
-        pending_records = await self.file_dao.get_pending_records(borrower_id)
+        
+        pending_records = await self.file_dao.get_pending_records(link_token=request.link_token)
         
         if not pending_records:
-            return {"status": "success", "message": "No pending files.", "results": []}
+            await self.lender_dao.update_borrower_status(borrower_id, "Docs Submitted")
+            return {
+                "status": "success",
+                "message": "No pending files.",
+                "review_results": [],
+                "stats": {
+                    "total_received": 0,
+                    "approved": 0,
+                    "rejected": 0,
+                    "successfully_classified": 0
+                },
+                "overall_summary": ""
+            }
 
         try:
             files = await self.file_dao.get_files([r["file_path"] for r in pending_records])
             files_base64 = [base64.b64encode(f).decode("utf-8") for f in files]
-            
             # 1. Batch Review
             review = await self.file_review_agent.review(files_base64, [r["id"] for r in pending_records])
         except Exception as e:
@@ -56,7 +68,7 @@ class FileService:
         
         # Filter and Process
         approved_results = [r for r in review.results if r.status == "approved"]
-        approved_ids = {r.file_id for r in approved_results}
+        approved_ids = [r.file_id for r in approved_results]
         
         files_to_classify = []
         file_ids_to_classify = []
@@ -79,7 +91,8 @@ class FileService:
             except Exception as e:
                 logger.warning(f"Classification failed but review succeeded: {str(e)}")
                 # We don't raise here because the review results are still valuable to the UI
-                
+
+        await self.lender_dao.update_borrower_status(borrower_id, "Docs Submitted")     
         return {
             "status": "success",
             "review_results": review.results,

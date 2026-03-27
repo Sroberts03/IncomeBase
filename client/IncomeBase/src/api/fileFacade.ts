@@ -11,23 +11,20 @@ export interface AnalyzeFilesRequest {
 }
 
 const fileFacade = {
-  uploadFile: async (borrowerToken: string, file: File) => {
+  uploadFile: async (file: File, zipCode: string, fileUUID: string, linkToken: string) => {
     // Path structure: borrowerId/fileName
-    const filePath = `${borrowerId}/${file.name}`;
+    const filePath = `${fileUUID}/${zipCode}/${file.name}`;
     const { data, error } = await supabase.storage
       .from('documents')
-      .upload(filePath, file, {
-        upsert: true,
-      });
+      .upload(filePath, file);
 
     if (error) throw error;
     
     // Create record in files table
     const { error: dbError } = await supabase.from('files').insert({
-      borrower_id: borrowerId,
       file_path: data.path,
-      file_name: file.name,
       needs_to_be_processed: true,
+      link_token: linkToken
     });
 
     if (dbError) throw dbError;

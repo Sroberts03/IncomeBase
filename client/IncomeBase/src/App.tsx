@@ -8,6 +8,7 @@ import FileUploadPage from './pages/FileUploadPage';
 import Home from './pages/HomePage';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import SuccessPage from './pages/SuccessPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, isLoading } = useAuth();
@@ -29,7 +30,7 @@ const App: React.FC = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/verify/:token" element={<ZipVerificationPage />} />
               <Route path="/upload/:token" element={<FileUploadPage />} />
-              <Route path="/success" element={<div><h1>Success!</h1><p>Your documents have been submitted for analysis.</p></div>} />
+              <Route path="/success" element={<SuccessPage />} />
 
               {/* Protected Routes */}
               <Route
