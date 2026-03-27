@@ -103,12 +103,13 @@ const DashboardPage: React.FC = () => {
 
   // Status badge color map (softer palette)
   const statusBadgeStyles: Record<string, string> = {
-    'Needs Link Creation': 'bg-yellow-50 text-yellow-700 border border-yellow-100',
-    'Link Created': 'bg-blue-50 text-blue-700 border border-blue-100',
-    'Docs Not Submitted': 'bg-gray-50 text-gray-500 border border-gray-100',
-    'Docs Submitted': 'bg-green-50 text-green-700 border border-green-100',
-    'Analysis Completed': 'bg-indigo-50 text-indigo-700 border border-indigo-100',
-    'Completed': 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+    'Needs Link Creation': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+    'Link Created': 'bg-blue-50 text-blue-700 border border-blue-200',
+    'Docs Not Submitted': 'bg-orange-50 text-orange-500 border border-orange-200',
+    'Docs Submitted': 'bg-green-50 text-green-700 border border-green-200',
+    'Analysis Completed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+    'Analyzing': 'bg-purple-50 text-purple-400 border border-purple-200',
+    'Analysis Failed': 'bg-red-50 text-red-700 border border-red-200',
   };
 
   // Stat card config
