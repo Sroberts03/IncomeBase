@@ -60,3 +60,4 @@ class GetBorrowerResponse(BaseConfigModel):
     created_at: str
     updated_at: str
     analysis: Optional[AnalysisResult] = None
+    document_link: Optional[str] = None

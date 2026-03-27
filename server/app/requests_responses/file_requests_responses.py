@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from pydantic.alias_generators import to_camel
 from typing import List, Dict, Any, Optional
 from models.file_review_schema import IndividualFileResult
+from models.file_record import BorrowerFileRecord
 
 class BaseConfigModel(BaseModel):
     model_config = ConfigDict(
@@ -36,3 +37,6 @@ class GenericMessageResponse(BaseConfigModel):
     approved: bool
     borrower_id: Optional[str] = None
     retries: Optional[int] = None
+
+class GetFilesResponse(BaseConfigModel):
+    files: List[BorrowerFileRecord]

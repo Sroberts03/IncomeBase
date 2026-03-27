@@ -102,3 +102,9 @@ class FileDao:
         
         return response
     
+    async def get_files_for_borrower(self, borrower_id: str):
+        res = await self.supabase.table("files") \
+            .select("*") \
+            .eq("borrower_id", borrower_id) \
+            .execute()
+        return res.data or []

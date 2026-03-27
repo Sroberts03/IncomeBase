@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from app.requests_responses.file_requests_responses import (
-    AnalyzeFilesRequest, 
+    AnalyzeFilesRequest,
+    GetFilesResponse, 
     SubmitFilesRequest, 
     SubmitFilesResponse,
     GenericMessageResponse
@@ -40,4 +41,15 @@ async def analyze_files(
     Returns immediately and runs the heavy LLM logic in the background.
     """
     return await handler.handle_analyze_files(request, current_user_id, background_tasks)
+
+@router.get("/borrower/{borrower_id}/files", response_model=GetFilesResponse)
+async def get_borrower_files(
+    borrower_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    handler: FileHandler = Depends(get_file_handler)
+):
+    """
+    Fetches the list of files associated with a borrower, along with their analysis status.
+    """
+    return await handler.get_files_for_borrower(borrower_id, current_user_id)
 

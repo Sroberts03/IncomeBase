@@ -288,7 +288,7 @@ const DashboardPage: React.FC = () => {
           </div>
           <button
             onClick={() => setShowCreateBorrowerModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow transition"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-full shadow-xl transition"
           >
             <FiUserPlus className="text-lg" />
             Create New Borrower

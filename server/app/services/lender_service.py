@@ -117,10 +117,13 @@ class LenderService:
         if not borrower_details:
             raise Exception("Borrower not found.")
         
-        analysis_details = await self.lender_dao.get_borrower_analysis(borrower_id)
-        if not analysis_details:
-            borrower_details["analysis"] = None
+        doc_link_data = await self.lender_dao.get_active_document_link(borrower_id)
+        if isinstance(doc_link_data, dict):
+            borrower_details["document_link"] = doc_link_data.get("link_token")
         else:
-            borrower_details["analysis"] = analysis_details
+            borrower_details["document_link"] = doc_link_data
+        
+        analysis_details = await self.lender_dao.get_borrower_analysis(borrower_id)
+        borrower_details["analysis"] = analysis_details 
 
         return GetBorrowerResponse(**borrower_details)

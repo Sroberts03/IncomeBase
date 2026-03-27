@@ -211,3 +211,16 @@ class FileService:
         except Exception as e:
             logger.error(f"Database error during bulk insert: {str(e)}")
             return {"error": str(e)}
+        
+    async def get_files_for_borrower(self, borrower_id: str, lender_id: str):
+        """
+        Fetches the list of files associated with a borrower, along with their analysis status.
+        """
+        # Security Check
+        is_owner = await self.lender_dao.check_borrower_ownership(borrower_id, lender_id)
+        if not is_owner:
+            logger.warning(f"Security Alert: Lender {lender_id} tried to access files of unauthorized borrower {borrower_id}")
+            raise Exception("Unauthorized: This borrower does not belong to you.")
+        
+        files = await self.file_dao.get_files_for_borrower(borrower_id)
+        return {"files": files}

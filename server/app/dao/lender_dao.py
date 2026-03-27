@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+
+
 class LenderDao:
     def __init__(self, supabase):
         self.db = supabase
@@ -121,5 +124,15 @@ class LenderDao:
         res = await self.db.table("borrower_analysis") \
             .select("*") \
             .eq("borrower_id", borrower_id) \
+            .execute()
+        return res.data[0] if res.data else None
+
+    async def get_active_document_link(self, borrower_id: str):
+        """Fetches the active document upload link for a borrower, if it exists."""
+        current_time = datetime.now(timezone.utc).isoformat()
+        res = await self.db.table("file_links") \
+            .select("link_token") \
+            .eq("borrower_id", borrower_id) \
+            .gt("expires_at", current_time) \
             .execute()
         return res.data[0] if res.data else None

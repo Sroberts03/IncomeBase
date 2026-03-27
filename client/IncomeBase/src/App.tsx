@@ -10,6 +10,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import SuccessPage from './pages/SuccessPage';
 import BorrowersDetailPage from './pages/BorrowersDetailPage';
+import ViewFilePage from './pages/ViewFilePage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, isLoading } = useAuth();
@@ -47,6 +48,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <BorrowersDetailPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/borrower/:borrowerId/file/view/:borrowerId" 
+                element={
+                  <ProtectedRoute>
+                    <ViewFilePage />
                   </ProtectedRoute>
                 } 
               />

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import lenderFacade from '../api/lenderFacade';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { BorrowerDetails } from '../types/BorrowerDetails';
-import { FiArrowLeft, FiAlertTriangle, FiCheckCircle, FiCopy } from 'react-icons/fi';
+import { FiArrowLeft, FiAlertTriangle, FiCheckCircle, FiCopy, FiBarChart2 } from 'react-icons/fi';
 import { 
   AreaChart, 
   Area, 
@@ -18,12 +18,18 @@ export default function BorrowersDetailPage() {
   const navigate = useNavigate();
   const [borrowerDetails, setBorrowerDetails] = useState<BorrowerDetails | null>(null);
   const [activeGraphTab, setActiveGraphTab] = useState<string>('incomeYtd');
+  const [token, setToken] = useState<string | null>(null);
+  const [ loading, setLoading ] = useState(true);
+  const baseUrl = import.meta.env.VITE_BASE_URL || '';
 
   useEffect(() => {
     const fetchBorrowerDetails = async () => {
+      setLoading(true);
       try {
         const details = await lenderFacade.getBorrowerDetails(borrowerId!);
         setBorrowerDetails(details);
+        setToken(details?.documentLink || null);
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching borrower details:', error);
       }
@@ -71,27 +77,73 @@ export default function BorrowersDetailPage() {
   const confidenceScore = borrowerDetails?.analysis?.confidenceScore ?? 0;
 
 
+
   // Helper to truncate UUIDs (e.g., 0998...515b)
   const truncateId = (id?: string) => {
     if (!id || id.length < 8) return id || '';
     return id.slice(0, 4) + '...' + id.slice(-4);
   };
 
-  // Copy to clipboard handler with feedback
-  const [copied, setCopied] = useState(false);
+  // Separate copy feedback for ID and doc link
+  const [copiedId, setCopiedId] = useState(false);
+  const [copiedDocLink, setCopiedDocLink] = useState(false);
   const handleCopyId = () => {
     if (borrowerDetails?.borrowerId) {
       navigator.clipboard.writeText(borrowerDetails.borrowerId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
+  const handleCopyDocLink = () => {
+    if (token) {
+      navigator.clipboard.writeText(`${baseUrl}/upload/${token}`);
+      setCopiedDocLink(true);
+      setTimeout(() => setCopiedDocLink(false), 2000);
     }
   };
 
+  const handleGenerateLink = async () => {
+    try {
+      const result = await lenderFacade.generateLink({borrowerId: borrowerId!});
+      setToken(result);
+    } catch (error) {
+      console.error('Error generating link:', error);
+    }
+  };
+
+  const handleViewFiles = () => {
+    if (borrowerDetails?.status === "Docs Submitted" || borrowerDetails?.status === "Analysis Completed") {
+      navigate(`file/view/${borrowerDetails.borrowerId}`)
+    }
+    else {
+      alert('Files are not available until documents have been submitted and analysis is completed.');
+    }
+  }
+
+  const actions = [
+    { label: 'Generate Link', onClick: handleGenerateLink, borrowerStatus: 'Needs Link Creation' },
+    { label: 'Email Doc Link', onClick: () => alert('Email functionality not implemented yet'), borrowerStatus: 'Link Created' },
+    { label: 'Remind to Submit', onClick: () => alert('Reminder functionality not implemented yet'), borrowerStatus: 'Docs Not Submitted' },
+    { label: 'Run Analysis', onClick: () => alert('Re-run Analysis functionality not implemented yet'), borrowerStatus: 'Docs Submitted' },
+    { label: 'Re-run Analysis', onClick: () => alert('Re-run Analysis functionality not implemented yet'), borrowerStatus: 'Analysis Completed' },
+  ];
+
   return (
     <div className="bg-gray-50 min-h-screen py-8">
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+          <div className="flex flex-col items-center">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <div className="text-gray-500 text-lg font-medium">Loading borrower details...</div>
+          </div>
+        </div>
+      )}
       {/* Header Hero Section */}
       <section className="max-w-4xl mx-auto px-4 pt-8 pb-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-center md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => navigate(-1)}
@@ -100,9 +152,37 @@ export default function BorrowersDetailPage() {
             >
               <FiArrowLeft className="text-xl" />
             </button>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{borrowerDetails?.fullName || 'Borrower'}</h1>
-              <span className={`ml-0 sm:ml-3 px-3 py-1 rounded-full text-sm font-semibold ${statusBadgeStyles[borrowerDetails?.status ?? ''] || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{borrowerDetails?.status}</span>
+            <div className="flex flex-col min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{borrowerDetails?.fullName || 'Borrower'}</h1>
+                <span className={`ml-0 sm:ml-3 px-3 py-1 rounded-full text-sm font-semibold ${statusBadgeStyles[borrowerDetails?.status ?? ''] || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{borrowerDetails?.status}</span>
+              </div>
+              {/* Document Link (truncated, blue, copyable, under name, in container) */}
+              {token ? (
+                <div className="flex items-center mt-1">
+                  <div className="flex items-center bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-md min-w-0">
+                    <Link
+                      to={`/upload/${token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-mono text-xs font-semibold truncate max-w-[220px]"
+                      style={{display:'inline-block'}}
+                    >
+                      {`${baseUrl}/upload/`}{token.slice(0, 6)}...{token.slice(-6)}
+                    </Link>
+                    <button
+                      onClick={handleCopyDocLink}
+                      className="ml-1 p-1 rounded hover:bg-blue-100 text-blue-400 hover:text-blue-700 transition"
+                      title="Copy document link"
+                      tabIndex={0}
+                    >
+                      {copiedDocLink ? <FiCheckCircle className="text-green-500 text-xs" /> : <FiCopy className="text-xs" />}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400 mt-1">No Doc Link Available</span>
+              )}
             </div>
             <span className="ml-0 sm:ml-4 text-xs text-gray-400 font-mono flex items-center gap-1 relative">
               ID: {truncateId(borrowerDetails?.borrowerId)}
@@ -113,11 +193,8 @@ export default function BorrowersDetailPage() {
                   title="Copy full ID"
                   tabIndex={0}
                 >
-                  <FiCopy className="text-xs" />
+                  {copiedId ? <FiCheckCircle className="text-green-500 text-xs" /> : <FiCopy className="text-xs" />}
                 </button>
-              )}
-              {copied && (
-                <span className="absolute left-full ml-2 px-2 py-1 rounded bg-gray-800 text-white text-xs font-semibold shadow z-10 animate-fade-in-out" style={{whiteSpace:'nowrap'}}>Copied!</span>
               )}
             </span>
           <style>{`
@@ -133,8 +210,19 @@ export default function BorrowersDetailPage() {
           `}</style>
           </div>
           <div className="flex items-center gap-2 mt-2 md:mt-0">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition text-base">
-              Generate Link
+            { borrowerDetails?.status === "Docs Submitted" || borrowerDetails?.status === "Analysis Completed" ? (
+              <button 
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base"
+                onClick={handleViewFiles}
+              >
+                View Files
+              </button>
+            ) : null }
+            <button 
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base"
+              onClick={actions.find(action => action.borrowerStatus === borrowerDetails?.status)?.onClick || handleGenerateLink}
+            >
+              {actions.find(action => action.borrowerStatus === borrowerDetails?.status)?.label || 'Generate Link'}
             </button>
           </div>
         </div>
@@ -211,7 +299,10 @@ export default function BorrowersDetailPage() {
           {/* THE GRAPH COMPONENT */}
           <div className="h-[300px] w-full flex items-center justify-center">
             {getGraphData().length === 0 ? (
-              <div className="text-gray-400 text-center w-full">No graph data available for this period.</div>
+              <div className="flex flex-col items-center justify-center w-full">
+                <FiBarChart2 className="text-6xl text-slate-300 mb-2" />
+                <div className="text-gray-400 text-center">No graph data available for this period.</div>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={getGraphData()} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>

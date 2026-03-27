@@ -7,6 +7,7 @@ export interface BorrowerDetails {
   createdAt: string;
   updatedAt: string;
   analysis?: BorrowerAnalysis;
+  documentLink?: string;
 }
 
 export type IncomeTrend =

@@ -1,3 +1,4 @@
+import type { FileRecord } from '../types/FileRecords';
 import apiClient from './apiClient';
 import { supabase } from './supabaseClient';
 
@@ -41,6 +42,25 @@ const fileFacade = {
     const response = await apiClient.post('/file/analyze-files', data);
     return response.data;
   },
+
+  getFilesForBorrower: async (borrowerId: string) => {
+    const response = await apiClient.get(`/file/borrower/${borrowerId}/files`);
+    return response.data.files;
+  },
+
+  getSignedUrlsForFiles: async (files: FileRecord[]) => {
+    const filePaths = files.map(file => file.filePath);
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrls(filePaths, 600); 
+
+    if (error) {
+      console.error('Error generating signed URLs:', error);
+      throw error;
+    }
+
+    return data.map(item => item.signedUrl);
+  }
 };
 
 export default fileFacade;

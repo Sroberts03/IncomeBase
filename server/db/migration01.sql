@@ -136,27 +136,30 @@ ALTER TABLE borrower_analysis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE file_links ENABLE ROW LEVEL SECURITY;
 
--- 1. Organizations: Users can see organizations they are members of
-CREATE POLICY organization_access ON organizations
-    FOR SELECT
-    TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM organization_members
-            WHERE organization_members.org_id = organizations.id
-            AND organization_members.member_id = auth.uid()
-        )
-    );
+-- 1. Create a secure bridge function that bypasses RLS safely
+CREATE OR REPLACE FUNCTION get_my_orgs()
+RETURNS SETOF uuid
+LANGUAGE sql
+SECURITY DEFINER 
+SET search_path = public
+AS $$
+    SELECT org_id FROM organization_members WHERE member_id = auth.uid();
+$$;
 
--- 2. Organization Members: Users can see members of their own organizations
-CREATE POLICY member_access ON organization_members
-    FOR SELECT
-    TO authenticated
-    USING (
-        org_id IN (
-            SELECT org_id FROM organization_members WHERE member_id = auth.uid()
-        )
-    );
+-- 2. Fix the Organizations policy (Sever the loop)
+DROP POLICY IF EXISTS organization_access ON organizations;
+CREATE POLICY organization_access ON organizations FOR SELECT TO authenticated
+USING (
+    admin_id = auth.uid() OR
+    id IN (SELECT get_my_orgs())
+);
+
+-- 3. Fix the Organization Members policy (Sever the loop)
+DROP POLICY IF EXISTS member_access ON organization_members;
+CREATE POLICY member_access ON organization_members FOR SELECT TO authenticated
+USING (
+    org_id IN (SELECT get_my_orgs())
+);
 
 -- 3. Borrowers: Access restricted to lender_id or organization members
 CREATE POLICY borrower_access ON borrowers

@@ -17,3 +17,6 @@ class FileHandler:
         background_tasks.add_task(self.file_service.run_analysis_pipeline, request.borrower_id)
         
         return response
+    
+    async def get_files_for_borrower(self, borrower_id: str, lender_id: str):
+        return await self.file_service.get_files_for_borrower(borrower_id, lender_id)
