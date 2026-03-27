@@ -18,7 +18,7 @@ router = APIRouter(
 def get_file_handler() -> FileHandler:
     return container.file_handler
 
-@router.post("/submit_files", response_model=SubmitFilesResponse)
+@router.post("/submit-files", response_model=SubmitFilesResponse)
 async def submit_files(
     request: SubmitFilesRequest, 
     handler: FileHandler = Depends(get_file_handler)
@@ -28,7 +28,7 @@ async def submit_files(
     """
     return await handler.handle_submit_files(request)
 
-@router.post("/analyze_files", response_model=GenericMessageResponse)
+@router.post("/analyze-files", response_model=GenericMessageResponse)
 async def analyze_files(
     request: AnalyzeFilesRequest,
     background_tasks: BackgroundTasks,

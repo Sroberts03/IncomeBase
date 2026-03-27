@@ -1,41 +1,49 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from typing import Optional, List
 
-class CreateBorrowerRequest(BaseModel):
+class BaseConfigModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class CreateBorrowerRequest(BaseConfigModel):
     full_name: str
     email: str
     zip_code: str
 
-class CreateBorrowerResponse(BaseModel):
+class CreateBorrowerResponse(BaseConfigModel):
     borrower_id: str
 
-class GenerateLinkRequest(BaseModel):
+class GenerateLinkRequest(BaseConfigModel):
     borrower_id: str
 
-class GenerateLinkResponse(BaseModel):
+class GenerateLinkResponse(BaseConfigModel):
     link_token: str
     expires_at: str
 
-class VerifyZipRequest(BaseModel):
+class VerifyZipRequest(BaseConfigModel):
     link_token: str
     zip_code: str
 
-class VerifyZipResponse(BaseModel):
+class VerifyZipResponse(BaseConfigModel):
     valid: bool
     borrower_name: Optional[str] = None
     message: str
 
-class BorrowerSummary(BaseModel):
+class BorrowerSummary(BaseConfigModel):
     borrower_id: str
     full_name: str
     email: str
     status: str
     created_at: str
 
-class GetBorrowersResponse(BaseModel):
+class GetBorrowersResponse(BaseConfigModel):
     borrowers: List[BorrowerSummary]
 
-class DashboardStatsResponse(BaseModel):
+class DashboardStatsResponse(BaseConfigModel):
     total_borrowers: int
     needs_link_creation: int
     link_created: int

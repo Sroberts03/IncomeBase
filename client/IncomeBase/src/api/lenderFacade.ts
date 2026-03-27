@@ -1,22 +1,23 @@
  import apiClient from './apiClient';
 
 export interface CreateBorrowerRequest {
-  full_name: string;
+  fullName: string;
   email: string;
-  zip_code: string;
+  zipCode: string;
 }
 
 export interface GenerateLinkRequest {
-  borrower_id: string;
+  borrowerId: string;
 }
 
 export interface VerifyZipRequest {
-  link_token: string;
-  zip_code: string;
+  linkToken: string;
+  zipCode: string;
 }
 
 const lenderFacade = {
   createBorrower: async (data: CreateBorrowerRequest) => {
+    console.log(data);
     const response = await apiClient.post('/lender/create-borrower', data);
     return response.data;
   },

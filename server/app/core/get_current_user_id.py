@@ -45,6 +45,12 @@ async def get_supabase_keys():
 
 async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
     keys = await get_supabase_keys()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
     
     try:
         # We verify the token using the dynamic keys from Supabase

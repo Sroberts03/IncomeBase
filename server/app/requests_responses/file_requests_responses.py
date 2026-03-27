@@ -1,27 +1,36 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.alias_generators import to_camel
 from typing import List, Dict, Any, Optional
 from models.file_review_schema import IndividualFileResult
 
-class SubmitFilesRequest(BaseModel):
+class BaseConfigModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class SubmitFilesRequest(BaseConfigModel):
     link_token: str 
     zip_code: str
-class AnalyzeFilesRequest(BaseModel):
+
+class AnalyzeFilesRequest(BaseConfigModel):
     borrower_id: str
 
-class SubmitFilesStats(BaseModel):
+class SubmitFilesStats(BaseConfigModel):
     total_received: int
     approved: int
     rejected: int
     successfully_classified: int
 
-class SubmitFilesResponse(BaseModel):
+class SubmitFilesResponse(BaseConfigModel):
     status: str
     review_results: List[IndividualFileResult]
     stats: SubmitFilesStats
     overall_summary: str
     message: Optional[str] = None
 
-class GenericMessageResponse(BaseModel):
+class GenericMessageResponse(BaseConfigModel):
     status: str
     message: str
     approved: bool

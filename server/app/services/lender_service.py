@@ -72,7 +72,7 @@ class LenderService:
         borrower_data = await self.lender_dao.get_borrower_by_link_token(request.link_token)
         
         if not borrower_data:
-            return VerifyZipResponse(valid=false, message="Invalid or expired link.")
+            return VerifyZipResponse(valid=False, message="Invalid or expired link.")
 
         # In Supabase/PostgREST, nested joins return a dict
         borrower_info = borrower_data.get("borrowers")

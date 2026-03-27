@@ -52,12 +52,10 @@ def test_submit_files_success():
     mock_handler.handle_submit_files.return_value = mock_response
 
     # Payload matching your SubmitFilesRequest DTO
-    payload = {"link_token": "test-token-123", "zip_code": "12345"}
-    
-    response = client.post("/file/submit_files", json=payload)
-    
+    payload = {"linkToken": "test-token-123", "zipCode": "12345"}
+    response = client.post("/file/submit-files", json=payload)
     assert response.status_code == 200
-    assert response.json()["overall_summary"] == "All documents processed successfully"
+    assert response.json()["overallSummary"] == "All documents processed successfully"
     
     # FIX 4: Assert on the correct method
     mock_handler.handle_submit_files.assert_called_once()
@@ -67,10 +65,8 @@ def test_submit_files_invalid_token():
     """
     Test that the route handles a missing link token (Pydantic validation).
     """
-    payload = {} # Missing 'link_token'
-    response = client.post("/file/submit_files", json=payload)
-    
-    # FastAPI/Pydantic returns 422 for missing required fields
+    payload = {} # Missing 'linkToken'
+    response = client.post("/file/submit-files", json=payload)
     assert response.status_code == 422
 
 
@@ -89,9 +85,8 @@ def test_analyze_files_success():
     }
     mock_handler.handle_analyze_files.return_value = mock_response
 
-    payload = {"borrower_id": "borrower-123"}
-    response = client.post("/file/analyze_files", json=payload)
-
+    payload = {"borrowerId": "borrower-123"}
+    response = client.post("/file/analyze-files", json=payload)
     assert response.status_code == 200
     assert response.json()["status"] == "accepted"
     mock_handler.handle_analyze_files.assert_called_once()
@@ -112,9 +107,8 @@ def test_analyze_files_no_files():
     }
     mock_handler.handle_analyze_files.return_value = mock_response
 
-    payload = {"borrower_id": "borrower-empty"}
-    response = client.post("/file/analyze_files", json=payload)
-
+    payload = {"borrowerId": "borrower-empty"}
+    response = client.post("/file/analyze-files", json=payload)
     assert response.status_code == 200
     assert response.json()["status"] == "accepted"
     mock_handler.handle_analyze_files.assert_called_once()
@@ -124,10 +118,8 @@ def test_analyze_files_invalid_payload():
     """
     Test that the route handles a missing borrower_id (Pydantic validation).
     """
-    payload = {} # Missing 'borrower_id'
-    response = client.post("/file/analyze_files", json=payload)
-    
-    # FastAPI/Pydantic returns 422 for missing required fields
+    payload = {} # Missing 'borrowerId'
+    response = client.post("/file/analyze-files", json=payload)
     assert response.status_code == 422
 
 def test_analyze_files_wrong_type():
@@ -135,8 +127,8 @@ def test_analyze_files_wrong_type():
     Test that the route handles an invalid type for borrower_id.
     """
     # To truly test validation, we send a complex object.
-    payload = {"borrower_id": {"nested": "value"}}
-    response = client.post("/file/analyze_files", json=payload)
+    payload = {"borrowerId": {"nested": "value"}}
+    response = client.post("/file/analyze-files", json=payload)
     assert response.status_code == 422
 
 def test_analyze_files_empty_string():
@@ -150,9 +142,8 @@ def test_analyze_files_empty_string():
         "approved": False
     }
     
-    payload = {"borrower_id": ""}
-    response = client.post("/file/analyze_files", json=payload)
-    
+    payload = {"borrowerId": ""}
+    response = client.post("/file/analyze-files", json=payload)
     assert response.status_code == 200
     assert response.json()["message"] == "Invalid borrower ID"
     mock_handler.handle_analyze_files.assert_called_once()
@@ -169,14 +160,13 @@ def test_create_borrower_success():
     app.dependency_overrides[get_current_user_id] = lambda: test_user_id
     
     payload = {
-        "full_name": "John Doe",
+        "fullName": "John Doe",
         "email": "john.doe@example.com",
-        "zip_code": "12345"
+        "zipCode": "12345"
     }
     response = client.post("/lender/create-borrower", json=payload)
-    
     assert response.status_code == 200
-    assert response.json()["borrower_id"] == "borrower-456"
+    assert response.json()["borrowerId"] == "borrower-456"
 
 def test_generate_link_success():
     mock_lender_handler = MagicMock()
@@ -184,17 +174,17 @@ def test_generate_link_success():
     app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
     app.dependency_overrides[get_current_user_id] = lambda: "l1"
     
-    payload = {"borrower_id": "b1"}
+    payload = {"borrowerId": "b1"}
     response = client.post("/lender/generate-link", json=payload)
     assert response.status_code == 200
-    assert response.json()["link_token"] == "t1"
+    assert response.json()["linkToken"] == "t1"
 
 def test_verify_zip_success():
     mock_lender_handler = MagicMock()
     mock_lender_handler.verify_borrower_zip = AsyncMock(return_value={"valid": True, "message": "Ok"})
     app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
     
-    payload = {"link_token": "t1", "zip_code": "12345"}
+    payload = {"linkToken": "t1", "zipCode": "12345"}
     response = client.post("/lender/verify-zip", json=payload)
     assert response.status_code == 200
     assert response.json()["valid"] is True
@@ -202,21 +192,19 @@ def test_verify_zip_success():
 def test_dashboard_stats_success():
     mock_lender_handler = MagicMock()
     mock_lender_handler.get_dashboard_stats = AsyncMock(return_value={
-        "total_borrowers": 1, "needs_link_creation": 0, "link_created": 0, "docs_submitted": 0, "completed": 1
+        "totalBorrowers": 1, "needsLinkCreation": 0, "linkCreated": 0, "docsSubmitted": 0, "completed": 1
     })
     app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
     app.dependency_overrides[get_current_user_id] = lambda: "l1"
-    
     response = client.get("/lender/dashboard-stats")
     assert response.status_code == 200
-    assert response.json()["total_borrowers"] == 1
+    assert response.json()["totalBorrowers"] == 1
 
 def test_get_borrowers_success():
     mock_lender_handler = MagicMock()
     mock_lender_handler.get_borrowers = AsyncMock(return_value={"borrowers": []})
     app.dependency_overrides[get_lender_handler] = lambda: mock_lender_handler
     app.dependency_overrides[get_current_user_id] = lambda: "l1"
-    
     response = client.get("/lender/borrowers")
     assert response.status_code == 200
     assert "borrowers" in response.json()

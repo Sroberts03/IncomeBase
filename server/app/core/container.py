@@ -26,16 +26,11 @@ from supabase import create_async_client
 
 load_dotenv()
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-supabase = create_async_client(
-    supabase_url=os.getenv("SUPABASE_URL"),
-    supabase_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-)
 
 class AppContainer:
     """Holds single instances of our core logic classes."""
     def __init__(self):
         self.ai_client = client
-        self.supabase = supabase
         self.file_review_agent = None
         self.classifier_agent = None
         self.extraction_agent = None
@@ -49,8 +44,13 @@ class AppContainer:
         self.lender_handler = None
         self.data_preparer = None
         self.parser = None
+        self.supabase = None
 
-    def initialize(self):
+    async def initialize(self):
+        self.supabase = await create_async_client(
+            supabase_url=os.getenv("SUPABASE_URL"),
+            supabase_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        )
         # agents
         self.file_review_agent = FileReviewAgent(client=self.ai_client)
         self.classifier_agent = ClassifierAgent(client=self.ai_client)

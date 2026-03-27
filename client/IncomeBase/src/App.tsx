@@ -6,13 +6,13 @@ import DashboardPage from './pages/DashboardPage';
 import ZipVerificationPage from './pages/ZipVerificationPage';
 import FileUploadPage from './pages/FileUploadPage';
 import Home from './pages/HomePage';
+import Header from './components/Header';
+import Footer from './components/Footer';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, isLoading } = useAuth();
-
   if (isLoading) return <div>Loading Auth...</div>;
   if (!session) return <Navigate to="/login" replace />;
-
   return <>{children}</>;
 };
 
@@ -20,27 +20,30 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/verify/:token" element={<ZipVerificationPage />} />
-          <Route path="/upload/:token" element={<FileUploadPage />} />
-          <Route path="/success" element={<div><h1>Success!</h1><p>Your documents have been submitted for analysis.</p></div>} />
+        <div>
+          <Header />
+          <main>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/verify/:token" element={<ZipVerificationPage />} />
+              <Route path="/upload/:token" element={<FileUploadPage />} />
+              <Route path="/success" element={<div><h1>Success!</h1><p>Your documents have been submitted for analysis.</p></div>} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Root Redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+              {/* Protected Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
       </Router>
     </AuthProvider>
   );

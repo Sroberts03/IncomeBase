@@ -10,7 +10,7 @@ from app.api.v1.lender_routes import router as lender_router
 async def lifespan(app: FastAPI):
     # STARTUP: Create Singletons (Agents, DAOs, Handlers)
     print("🚀 Initializing Summit West Engine...")
-    container.initialize() 
+    await container.initialize() 
     yield
     # SHUTDOWN: Clean up resources if needed
     print("💤 Shutting down...")
@@ -25,13 +25,19 @@ app = FastAPI(
 
 # 4. CORS Middleware
 origins = [
-    "http://localhost:5173", 
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
+    "http://localhost:5176",
+    "http://127.0.0.1:5176",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

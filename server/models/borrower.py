@@ -1,8 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from datetime import datetime
-from pyparsing import Literal
+from typing import Literal
 
-class Borrower(BaseModel):
+class BaseConfigModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class Borrower(BaseConfigModel):
     borrower_id: str
     lender_id: str
     full_name: str

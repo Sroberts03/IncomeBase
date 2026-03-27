@@ -2,20 +2,20 @@ import apiClient from './apiClient';
 import { supabase } from './supabaseClient';
 
 export interface SubmitFilesRequest {
-  link_token: string;
-  zip_code: string;
+  linkToken: string;
+  zipCode: string;
 }
 
 export interface AnalyzeFilesRequest {
-  borrower_id: string;
+  borrowerId: string;
 }
 
 const fileFacade = {
-  uploadFile: async (borrowerId: string, file: File) => {
-    // Path structure: borrower_id/file_name
+  uploadFile: async (borrowerToken: string, file: File) => {
+    // Path structure: borrowerId/fileName
     const filePath = `${borrowerId}/${file.name}`;
     const { data, error } = await supabase.storage
-      .from('borrower-files')
+      .from('documents')
       .upload(filePath, file, {
         upsert: true,
       });
@@ -36,12 +36,12 @@ const fileFacade = {
   },
 
   submitFiles: async (data: SubmitFilesRequest) => {
-    const response = await apiClient.post('/file/submit_files', data);
+    const response = await apiClient.post('/file/submit-files', data);
     return response.data;
   },
 
   analyzeFiles: async (data: AnalyzeFilesRequest) => {
-    const response = await apiClient.post('/file/analyze_files', data);
+    const response = await apiClient.post('/file/analyze-files', data);
     return response.data;
   },
 };

@@ -1,12 +1,20 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.alias_generators import to_camel
 from typing import List, Literal
 
-class MonthlyPoint(BaseModel):
+class BaseConfigModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class MonthlyPoint(BaseConfigModel):
     year: int
     month: str = Field(..., description="Full month name, e.g., 'January'")
     income: float = Field(..., description="Total qualifying income for this specific month")
 
-class AnalysisResult(BaseModel):
+class AnalysisResult(BaseConfigModel):
     # Core Averages & Qualitative Assessment
     monthly_average_income: float = Field(..., description="Average monthly income over the last 12 months")
     income_stability_score: float = Field(..., ge=0, le=1)
@@ -59,4 +67,3 @@ class AnalysisResult(BaseModel):
             #### 4. Analyst Summary
             {self.analysis_summary}
             """
-    
