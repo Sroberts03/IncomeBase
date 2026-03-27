@@ -11,7 +11,8 @@ from app.requests_responses.lender_requests_responses import (
     VerifyZipRequest,
     VerifyZipResponse,
     DashboardStatsResponse,
-    GetBorrowersResponse
+    GetBorrowersResponse,
+    GetBorrowerResponse
 )
 from app.core.get_current_user_id import get_current_user_id
 
@@ -61,3 +62,11 @@ async def get_borrowers(
     handler: LenderHandler = Depends(get_lender_handler)
 ) -> GetBorrowersResponse:
     return await handler.get_borrowers(current_user_id)
+
+@router.get("/borrower/{borrower_id}", response_model=GetBorrowerResponse)
+async def get_borrower_details(
+    borrower_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    handler: LenderHandler = Depends(get_lender_handler)
+) -> GetBorrowerResponse:
+    return await handler.get_borrower_details(current_user_id, borrower_id)

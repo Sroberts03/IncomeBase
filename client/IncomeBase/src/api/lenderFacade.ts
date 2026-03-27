@@ -41,6 +41,11 @@ const lenderFacade = {
     const response = await apiClient.get('/lender/borrowers');
     return response.data;
   },
+
+  getBorrowerDetails: async (borrowerId: string) => {
+    const response = await apiClient.get(`/lender/borrower/${borrowerId}`);
+    return response.data;
+  }
 };
 
 export default lenderFacade;

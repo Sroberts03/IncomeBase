@@ -107,3 +107,19 @@ class LenderDao:
                 .update({"status": new_status}) \
                 .eq("borrower_id", borrower_id) \
                 .execute()
+            
+    async def get_borrower_details(self, borrower_id: str):
+        """Fetches detailed information for a specific borrower."""
+        res = await self.db.table("borrowers") \
+            .select("*") \
+            .eq("borrower_id", borrower_id) \
+            .execute()
+        return res.data[0] if res.data else None
+    
+    async def get_borrower_analysis(self, borrower_id: str):
+        """Fetches the analysis results for a specific borrower."""
+        res = await self.db.table("borrower_analysis") \
+            .select("*") \
+            .eq("borrower_id", borrower_id) \
+            .execute()
+        return res.data[0] if res.data else None

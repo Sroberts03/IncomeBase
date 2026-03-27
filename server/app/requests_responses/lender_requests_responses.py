@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from typing import Optional, List
+from models.analysis_schema import AnalysisResult
 
 class BaseConfigModel(BaseModel):
     model_config = ConfigDict(
@@ -49,3 +50,13 @@ class DashboardStatsResponse(BaseConfigModel):
     link_created: int
     docs_submitted: int
     completed: int
+
+class GetBorrowerResponse(BaseConfigModel):
+    borrower_id: str
+    full_name: str
+    email: str
+    zip_code: str
+    status: str
+    created_at: str
+    updated_at: str
+    analysis: Optional[AnalysisResult] = None

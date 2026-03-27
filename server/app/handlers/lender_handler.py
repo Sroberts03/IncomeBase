@@ -28,3 +28,6 @@ class LenderHandler:
 
     async def get_borrowers(self, current_user_id: str) -> GetBorrowersResponse:
         return await self.lender_service.get_borrowers(current_user_id)
+    
+    async def get_borrower_details(self, current_user_id: str, borrower_id: str) -> GetBorrowersResponse:
+        return await self.lender_service.get_borrower_details(current_user_id, borrower_id)

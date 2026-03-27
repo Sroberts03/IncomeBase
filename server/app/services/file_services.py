@@ -43,7 +43,6 @@ class FileService:
         pending_records = await self.file_dao.get_pending_records(link_token=request.link_token)
         
         if not pending_records:
-            await self.lender_dao.update_borrower_status(borrower_id, "Docs Submitted")
             return {
                 "status": "success",
                 "message": "No pending files.",
@@ -126,7 +125,8 @@ class FileService:
         return {
             "status": "accepted",
             "message": "Analysis started in background. Monitor borrower status for completion.",
-            "borrower_id": borrower_id
+            "borrower_id": borrower_id,
+            "approved": False,
         }
 
     async def run_analysis_pipeline(self, borrower_id: str):

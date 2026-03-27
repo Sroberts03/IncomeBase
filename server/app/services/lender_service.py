@@ -6,6 +6,7 @@ from app.requests_responses.lender_requests_responses import (
     CreateBorrowerResponse,
     GenerateLinkRequest,
     GenerateLinkResponse,
+    GetBorrowerResponse,
     VerifyZipRequest,
     VerifyZipResponse,
     DashboardStatsResponse,
@@ -104,4 +105,22 @@ class LenderService:
         borrowers_list = await self.lender_dao.get_borrowers_for_org(org_id)
         summaries = [BorrowerSummary(**b) for b in borrowers_list]
         return GetBorrowersResponse(borrowers=summaries)
+    
+    async def get_borrower_details(self, current_user_id: str, borrower_id: str) -> GetBorrowerResponse:
+        """Fetches detailed information for a specific borrower."""
+        # Security Check
+        is_owner = await self.lender_dao.check_borrower_ownership(borrower_id, current_user_id)
+        if not is_owner:
+            raise Exception("Unauthorized: This borrower record does not belong to you.")
+
+        borrower_details = await self.lender_dao.get_borrower_details(borrower_id)
+        if not borrower_details:
+            raise Exception("Borrower not found.")
         
+        analysis_details = await self.lender_dao.get_borrower_analysis(borrower_id)
+        if not analysis_details:
+            borrower_details["analysis"] = None
+        else:
+            borrower_details["analysis"] = analysis_details
+
+        return GetBorrowerResponse(**borrower_details)
