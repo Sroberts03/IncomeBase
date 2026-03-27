@@ -174,15 +174,17 @@ class FileService:
             
             while not analysis_approved and retries < MAX_RETRIES:
                 retries += 1
+                logger.info(f"Attempting analysis for {borrower_id} (Attempt {retries})")
                 final_report = await self.analyzer_agent.analyze(prepared_data, corrections)
                 review_results = await self.review_agent.review_analysis(prepared_data, final_report.model_dump_json())
                 analysis_approved = review_results.is_approved
                 if not analysis_approved:
+                    logger.info(f"Analysis review failed for {borrower_id} on attempt {retries}. Corrections needed: {review_results.corrections}")
                     corrections = review_results.corrections
                 
             if final_report and analysis_approved:
                 await self.file_dao.save_analysis_results(final_report.model_dump(), borrower_id)
-                await self.lender_dao.update_borrower_status(borrower_id, "Completed")
+                await self.lender_dao.update_borrower_status(borrower_id, "Analysis Completed")
                 logger.info(f"Analysis completed successfully for {borrower_id}")
             else:
                 await self.lender_dao.update_borrower_status(borrower_id, "Analysis Failed")
@@ -190,7 +192,6 @@ class FileService:
 
         except Exception as e:
             logger.error(f"Critical failure in background pipeline for {borrower_id}: {str(e)}", exc_info=True)
-            await self.lender_dao.update_borrower_status(borrower_id, "System Error")
 
     async def process_and_save_extractions(self, borrower_id: str, extraction_results: list[IndividualFileExtraction]):
         try:

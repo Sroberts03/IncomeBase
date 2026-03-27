@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import lenderFacade from '../api/lenderFacade';
+import fileFacade from '../api/fileFacade';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { BorrowerDetails } from '../types/BorrowerDetails';
 import { FiArrowLeft, FiAlertTriangle, FiCheckCircle, FiCopy, FiBarChart2 } from 'react-icons/fi';
@@ -21,7 +22,7 @@ export default function BorrowersDetailPage() {
   const [token, setToken] = useState<string | null>(null);
   const [ loading, setLoading ] = useState(true);
   const baseUrl = import.meta.env.VITE_BASE_URL || '';
-
+  
   useEffect(() => {
     const fetchBorrowerDetails = async () => {
       setLoading(true);
@@ -48,11 +49,11 @@ export default function BorrowersDetailPage() {
   const statusBadgeStyles: Record<string, string> = {
     'Needs Link Creation': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
     'Link Created': 'bg-blue-50 text-blue-700 border border-blue-200',
-    'Docs Not Submitted': 'bg-gray-50 text-gray-500 border border-gray-200',
+    'Docs Not Submitted': 'bg-orange-50 text-orange-500 border border-orange-200',
     'Docs Submitted': 'bg-green-50 text-green-700 border border-green-200',
     'Analysis Completed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
-    'Completed': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    'System Error': 'bg-red-50 text-red-700 border border-red-200',
+    'Analyzing': 'bg-purple-50 text-purple-400 border border-purple-200',
+    'Analysis Failed': 'bg-red-50 text-red-700 border border-red-200',
   };
 
   const getGraphData = () => {
@@ -120,12 +121,25 @@ export default function BorrowersDetailPage() {
     }
   }
 
+  const handleAnalyzeFiles = async () => {
+    try {
+      await fileFacade.analyzeFiles({borrowerId: borrowerId!});
+      alert('File analysis has been initiated. Please refresh the page after a few moments to see updated results.');
+    } catch (error) {
+      console.error('Error analyzing files:', error);
+      alert('An error occurred while analyzing files. Please try again later.');
+    }
+    
+  };
+
   const actions = [
     { label: 'Generate Link', onClick: handleGenerateLink, borrowerStatus: 'Needs Link Creation' },
     { label: 'Email Doc Link', onClick: () => alert('Email functionality not implemented yet'), borrowerStatus: 'Link Created' },
     { label: 'Remind to Submit', onClick: () => alert('Reminder functionality not implemented yet'), borrowerStatus: 'Docs Not Submitted' },
-    { label: 'Run Analysis', onClick: () => alert('Re-run Analysis functionality not implemented yet'), borrowerStatus: 'Docs Submitted' },
-    { label: 'Re-run Analysis', onClick: () => alert('Re-run Analysis functionality not implemented yet'), borrowerStatus: 'Analysis Completed' },
+    { label: 'Run Analysis', onClick: () => alert('Analysis in progress...'), borrowerStatus: 'Analyzing' },
+    { label: 'Run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Docs Submitted' },
+    { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Completed' },
+    { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Failed' },
   ];
 
   return (
@@ -210,7 +224,10 @@ export default function BorrowersDetailPage() {
           `}</style>
           </div>
           <div className="flex items-center gap-2 mt-2 md:mt-0">
-            { borrowerDetails?.status === "Docs Submitted" || borrowerDetails?.status === "Analysis Completed" ? (
+            { borrowerDetails?.status === "Docs Submitted" 
+              || borrowerDetails?.status === "Analysis Completed" 
+              || borrowerDetails?.status === "Analysis Failed" 
+              || borrowerDetails?.status === "Analyzing" ? (
               <button 
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base"
                 onClick={handleViewFiles}
@@ -219,7 +236,10 @@ export default function BorrowersDetailPage() {
               </button>
             ) : null }
             <button 
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base"
+              className={
+                borrowerDetails?.status === "Analyzing" ? "bg-blue-200 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base" 
+                  : "bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base"
+              }
               onClick={actions.find(action => action.borrowerStatus === borrowerDetails?.status)?.onClick || handleGenerateLink}
             >
               {actions.find(action => action.borrowerStatus === borrowerDetails?.status)?.label || 'Generate Link'}
