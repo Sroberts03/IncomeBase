@@ -131,39 +131,65 @@ class FileService:
 
     async def run_analysis_pipeline(self, borrower_id: str):
         """
-        The background worker that actually runs the LLM logic.
+        The background worker that actually runs the LLM logic with 
+        Rate Limit protection and Parser safety.
         """
         try:
             logger.info(f"Background analysis pipeline started for borrower: {borrower_id}")
             
-            # get all processed files records for borrower
+            # 1. Fetch File Records
             processed_files = await self.file_dao.get_files_for_borrower(borrower_id)
             if not processed_files:
                 logger.info(f"No files to analyze for {borrower_id}. Stopping pipeline.")
                 await self.lender_dao.update_borrower_status(borrower_id, "No Files")
                 return
 
-            # download files from storage
+            # 2. Download Binary Data
             file_paths = [f["file_path"] for f in processed_files]
             files = await self.file_dao.get_files(file_paths)
             
-            # parse and extract
+            # 3. Build Extraction Tasks (with Parser Guard)
             extraction_tasks = []
             for file_record, file_bytes in zip(processed_files, files):
                 parsed = self.parser.parse(file_bytes, file_record["file_name"])   
-                extraction_task = self.extractor_agent.extract_single_file(
+                
+                if not parsed:
+                    logger.warning(f"Skipping {file_record['file_name']}: Parser returned None.")
+                    continue
+
+                # We create the coroutine but DON'T await it yet
+                task = self.extractor_agent.extract_single_file(
                     parsed, 
                     file_id=file_record["id"], 
                     file_name=file_record["file_name"]
                 )
-                extraction_tasks.append(extraction_task)
+                extraction_tasks.append(task)
 
-            extraction_results = await asyncio.gather(*extraction_tasks)
+            if not extraction_tasks:
+                logger.error(f"No valid files could be parsed for {borrower_id}.")
+                await self.lender_dao.update_borrower_status(borrower_id, "Analysis Failed")
+                return
+
+            # 4. Execute Tasks in Chunks (Rate Limit Protection)
+            extraction_results = []
+            chunk_size = 3 # Process 3 Vision requests at a time
             
-            # Save extractions
+            for i in range(0, len(extraction_tasks), chunk_size):
+                chunk = extraction_tasks[i : i + chunk_size]
+                logger.info(f"Processing chunk {i//chunk_size + 1} for {borrower_id}...")
+                
+                # Run the current batch
+                results = await asyncio.gather(*chunk)
+                extraction_results.extend(results)
+                
+                # Pause to let OpenAI TPM (Tokens Per Minute) bucket refill
+                if i + chunk_size < len(extraction_tasks):
+                    await asyncio.sleep(4) 
+            
+            # 5. Save Extractions to Database
             await self.process_and_save_extractions(borrower_id, extraction_results)
             
-            # Prepare and Analyze
+            # 6. Prepare and Analyze (The Multi-Agent Review Loop)
             prepared_data = self.data_preparer.prepare_financial_context(extraction_results)
             
             analysis_approved = False
@@ -175,23 +201,33 @@ class FileService:
             while not analysis_approved and retries < MAX_RETRIES:
                 retries += 1
                 logger.info(f"Attempting analysis for {borrower_id} (Attempt {retries})")
+                
                 final_report = await self.analyzer_agent.analyze(prepared_data, corrections)
-                review_results = await self.review_agent.review_analysis(prepared_data, final_report.model_dump_json())
+                
+                # Second agent reviews the first agent's work
+                review_results = await self.review_agent.review_analysis(
+                    prepared_data, 
+                    final_report.model_dump_json()
+                )
+                
                 analysis_approved = review_results.is_approved
                 if not analysis_approved:
-                    logger.info(f"Analysis review failed for {borrower_id} on attempt {retries}. Corrections needed: {review_results.corrections}")
+                    logger.info(f"Review failed for {borrower_id} (Attempt {retries}). Feedback: {review_results.corrections}")
                     corrections = review_results.corrections
                 
+            # 7. Finalize Status
             if final_report and analysis_approved:
                 await self.file_dao.save_analysis_results(final_report.model_dump(), borrower_id)
                 await self.lender_dao.update_borrower_status(borrower_id, "Analysis Completed")
                 logger.info(f"Analysis completed successfully for {borrower_id}")
             else:
-                await self.lender_dao.update_borrower_status(borrower_id, "Analysis Failed")
-                logger.error(f"Analysis pipeline failed to reach approval for {borrower_id}")
+                await self.file_dao.save_analysis_results(final_report.model_dump(), borrower_id)
+                await self.lender_dao.update_borrower_status(borrower_id, "Analysis Flagged For Review")
+                logger.error(f"Analysis pipeline failed to reach approval after {retries} retries.")
 
         except Exception as e:
             logger.error(f"Critical failure in background pipeline for {borrower_id}: {str(e)}", exc_info=True)
+            await self.lender_dao.update_borrower_status(borrower_id, "Analysis Failed")
 
     async def process_and_save_extractions(self, borrower_id: str, extraction_results: list[IndividualFileExtraction]):
         try:

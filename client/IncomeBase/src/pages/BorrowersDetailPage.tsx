@@ -54,6 +54,7 @@ export default function BorrowersDetailPage() {
     'Analysis Completed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
     'Analyzing': 'bg-purple-50 text-purple-400 border border-purple-200',
     'Analysis Failed': 'bg-red-50 text-red-700 border border-red-200',
+    'Analysis Flagged For Review': 'bg-red-50 text-red-700 border border-red-200',
   };
 
   const getGraphData = () => {
@@ -113,11 +114,15 @@ export default function BorrowersDetailPage() {
   };
 
   const handleViewFiles = () => {
-    if (borrowerDetails?.status === "Docs Submitted" || borrowerDetails?.status === "Analysis Completed") {
+    if (borrowerDetails?.status === "Docs Submitted" 
+      || borrowerDetails?.status === "Analysis Completed" 
+      || borrowerDetails?.status === "Analysis Failed" 
+      || borrowerDetails?.status === "Analysis Flagged For Review"
+      || borrowerDetails?.status === "Analyzing") {
       navigate(`file/view/${borrowerDetails.borrowerId}`)
     }
     else {
-      alert('Files are not available until documents have been submitted and analysis is completed.');
+      alert('Files are not available until documents have been submitted.');
     }
   }
 
@@ -140,6 +145,7 @@ export default function BorrowersDetailPage() {
     { label: 'Run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Docs Submitted' },
     { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Completed' },
     { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Failed' },
+    { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Flagged For Review' },
   ];
 
   return (
@@ -169,7 +175,8 @@ export default function BorrowersDetailPage() {
             <div className="flex flex-col min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{borrowerDetails?.fullName || 'Borrower'}</h1>
-                <span className={`ml-0 sm:ml-3 px-3 py-1 rounded-full text-sm font-semibold ${statusBadgeStyles[borrowerDetails?.status ?? ''] || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{borrowerDetails?.status}</span>
+                <span className={`ml-0 sm:ml-3 px-3 py-1 rounded-full text-sm font-semibold ${statusBadgeStyles[borrowerDetails?.status ?? ''] 
+                  || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{borrowerDetails?.status}</span>
               </div>
               {/* Document Link (truncated, blue, copyable, under name, in container) */}
               {token ? (

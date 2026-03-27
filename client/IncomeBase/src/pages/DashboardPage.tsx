@@ -99,7 +99,7 @@ const DashboardPage: React.FC = () => {
   });
 
   // Status options for filter
-  const statusOptions = ['All', 'Needs Link Creation', 'Link Created', 'Docs Not Submitted', 'Docs Submitted', 'Analysis Completed', 'Completed'];
+  const statusOptions = ['All', 'Needs Link Creation', 'Link Created', 'Docs Not Submitted', 'Docs Submitted', 'Analysis Completed', 'Analyzing', 'Analysis Failed', 'Analysis Flagged For Review'];
 
   // Status badge color map (softer palette)
   const statusBadgeStyles: Record<string, string> = {
@@ -110,6 +110,7 @@ const DashboardPage: React.FC = () => {
     'Analysis Completed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
     'Analyzing': 'bg-purple-50 text-purple-400 border border-purple-200',
     'Analysis Failed': 'bg-red-50 text-red-700 border border-red-200',
+    'Analysis Flagged For Review': 'bg-red-50 text-red-700 border border-red-200',
   };
 
   // Stat card config

@@ -17,7 +17,7 @@ class Borrower(BaseConfigModel):
     email: str
     org_id: str
     zip_code: str
-    status: Literal["Needs Link Creation", "Link Created", "Docs Not Submitted", "Docs Submitted", "Analysis Complete"]
+    status: Literal["Needs Link Creation", "Link Created", "Docs Not Submitted", "Docs Submitted", "Analysis Complete", "Analyzing", "Analysis Failed", "Analysis Flagged For Review"]
     created_at: str
     updated_at: str
     link_token: str
