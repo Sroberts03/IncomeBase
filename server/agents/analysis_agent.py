@@ -7,9 +7,10 @@ class AnalysisAgent(BaseAgent):
     def __init__(self, client):
         super().__init__(
             client=client,
-            model="gpt-4o",
+            model="o1",
             agent_name="analysis",
-            version="v1"
+            version="v1",
+            reasoning_effort="high"
         )
     async def analyze(self, financial_context: str, corrections: str = None) -> AnalysisResult:
         """Sends the prepared text summary to the AI for risk assessment."""
@@ -25,6 +26,7 @@ class AnalysisAgent(BaseAgent):
         response = await self.get_structured_response(
             system_prompt=prompt,
             user_content=user_content,
+            
             response_format=AnalysisResult
         )
         return response

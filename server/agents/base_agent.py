@@ -5,11 +5,12 @@ import os
 from pathlib import Path
 
 class BaseAgent:
-    def __init__(self, client: AsyncOpenAI, model: str, agent_name: str, version: str):
+    def __init__(self, client: AsyncOpenAI, model: str, agent_name: str, version: str, reasoning_effort: str = None):
         self.client = client
         self.model = model
         self.agent_name = agent_name
         self.version = version
+        self.reasoning_effort = reasoning_effort
 
     # This helper makes it easy for every agent to call OpenAI with Structured Outputs
     async def get_structured_response(self, system_prompt: str, user_content: Any, response_format: Any):
@@ -23,15 +24,25 @@ class BaseAgent:
         else:
             # If you passed a pre-formatted list (for Vision/Images), use it directly
             user_messages = [{"role": "user", "content": user_content}]
-
-        response = await self.client.beta.chat.completions.parse(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                *user_messages
-            ],
-            response_format=response_format,
-        )
+        if self.reasoning_effort:
+            response = await self.client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *user_messages
+                ],
+                response_format=response_format,
+                reasoning_effort=self.reasoning_effort
+            )
+        else:
+            response = await self.client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *user_messages
+                ],
+                response_format=response_format,
+            )
         return response.choices[0].message.parsed
 
     def load_prompt(self, variables: Dict[str, str] = None) -> str:
