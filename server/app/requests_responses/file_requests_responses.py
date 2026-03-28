@@ -14,7 +14,6 @@ class BaseConfigModel(BaseModel):
 class SubmitFilesRequest(BaseConfigModel):
     link_token: str 
     zip_code: str
-
 class AnalyzeFilesRequest(BaseConfigModel):
     borrower_id: str
 
@@ -22,7 +21,7 @@ class SubmitFilesStats(BaseConfigModel):
     total_received: int
     approved: int
     rejected: int
-    successfully_classified: int
+    classification_status: str
 
 class SubmitFilesResponse(BaseConfigModel):
     status: str

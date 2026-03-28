@@ -22,12 +22,13 @@ def get_file_handler() -> FileHandler:
 @router.post("/submit-files", response_model=SubmitFilesResponse)
 async def submit_files(
     request: SubmitFilesRequest, 
-    handler: FileHandler = Depends(get_file_handler)
+    background_tasks: BackgroundTasks,
+    handler: FileHandler = Depends(get_file_handler),
 ):
     """
     Triggers the document review and classification pipeline for a borrower.
     """
-    return await handler.handle_submit_files(request)
+    return await handler.handle_submit_files(request, background_tasks)
 
 @router.post("/analyze-files", response_model=GenericMessageResponse)
 async def analyze_files(

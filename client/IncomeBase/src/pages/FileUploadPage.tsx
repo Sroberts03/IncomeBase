@@ -68,6 +68,7 @@ const FileUploadPage: React.FC = () => {
     try {
       // 1. Upload each file to Supabase Storage
       const fileUUID = crypto.randomUUID().replace(/-/g, '');
+      console.log(`Generated file UUID: ${fileUUID}`);
       await Promise.all(files.map(file => fileFacade.uploadFile(file, zipCode, fileUUID, token)));
       
       setUploading(false);

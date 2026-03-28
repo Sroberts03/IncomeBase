@@ -2,6 +2,7 @@ import asyncio
 import base64
 import logging
 from typing import Dict, Any, List
+from fastapi import BackgroundTasks
 from models.file_review_schema import BatchFileReview
 from models.extraction_schema import IndividualFileExtraction
 from app.requests_responses.file_requests_responses import SubmitFilesRequest
@@ -24,7 +25,7 @@ class FileService:
         self.data_preparer = data_preparer
         self.lender_dao = lender_dao
 
-    async def submit_files(self, request: SubmitFilesRequest) -> Dict[str, Any]:
+    async def submit_files(self, request: SubmitFilesRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
         """
         Submits files for review and then classification.
         Returns a detailed summary of the batch processing.
@@ -32,7 +33,6 @@ class FileService:
         logger.info(f"Starting file submission for token: {request.link_token[:8]}...")
 
         borrower_data = await self.file_dao.get_borrower_data_from_link_token(request.link_token)
-
         borrower_id = borrower_data["borrower_id"]
         
         # Zip Code Verification (Final Security Check)
@@ -40,9 +40,11 @@ class FileService:
             logger.warning(f"Security Alert: Zip verification failed during file submission for borrower {borrower_id}")
             raise Exception("Unauthorized: Zip code verification failed.")
         
-        pending_records = await self.file_dao.get_pending_records(borrower_id)
+        pending_records = await self.file_dao.get_pending_records(request.link_token)
+        print(f"Found {len(pending_records)} pending files: {pending_records}.")
         
         if not pending_records:
+            logger.info(f"No pending files found for borrower {borrower_id}.")
             return {
                 "status": "success",
                 "message": "No pending files.",
@@ -51,7 +53,7 @@ class FileService:
                     "total_received": 0,
                     "approved": 0,
                     "rejected": 0,
-                    "successfully_classified": 0
+                    "classification_status": "none"
                 },
                 "overall_summary": ""
             }
@@ -59,14 +61,50 @@ class FileService:
         try:
             files = await self.file_dao.get_files([r["file_path"] for r in pending_records])
             files_base64 = [base64.b64encode(f).decode("utf-8") for f in files]
-            # 1. Batch Review
-            review = await self.file_review_agent.review(files_base64, [r["id"] for r in pending_records])
+            
+            # 1. BATCHED REVIEW LOOP (Protects OpenAI limits)
+            BATCH_SIZE = 5
+            all_review_results = []
+            overall_summaries = []
+            
+            for i in range(0, len(files_base64), BATCH_SIZE):
+                batch_files = files_base64[i : i + BATCH_SIZE]
+                batch_records = pending_records[i : i + BATCH_SIZE]
+                batch_ids = [r["id"] for r in batch_records]
+                
+                # Process the chunk
+                batch_review = await self.file_review_agent.review(batch_files, batch_ids)
+                all_review_results.extend(batch_review.results)
+                
+                if hasattr(batch_review, 'overall_summary') and batch_review.overall_summary:
+                    overall_summaries.append(batch_review.overall_summary)
+                
+                # If there are more batches to process, pause to respect rate limits
+                if i + BATCH_SIZE < len(files_base64):
+                    await asyncio.sleep(2) 
+
+            print(f"Completed review for all files. Results: {all_review_results}")
         except Exception as e:
             logger.error(f"Error during file review: {str(e)}")
             raise Exception("Failed to process file review. Please try again later.")
         
-        # Filter and Process
-        approved_results = [r for r in review.results if r.status == "approved"]
+        # Filter and Process Rejections
+        unapproved_files = [r for r in all_review_results if r.status == "rejected"]
+        if unapproved_files:
+            file_paths = []            
+            for record in pending_records:
+                if record["id"] in [f.file_id for f in unapproved_files]:
+                    file_paths.append(record["file_path"])
+                    
+            logger.info(f"{len(unapproved_files)} files were rejected during review for borrower {borrower_id}.")
+            await self.file_dao.remove_files(
+                file_ids=[r.file_id for r in unapproved_files],
+                file_paths=file_paths
+            )
+            print(f"Removed unapproved files: {file_paths}")
+            
+        # Filter Approved
+        approved_results = [r for r in all_review_results if r.status == "approved"]
         approved_ids = [r.file_id for r in approved_results]
         
         files_to_classify = []
@@ -76,10 +114,44 @@ class FileService:
                 files_to_classify.append(files_base64[i])
                 file_ids_to_classify.append(record["id"])
 
-        classified_count = 0
+        # 2. TRIGGER BACKGROUND CLASSIFICATION
         if files_to_classify:
-            try:
-                classification_results = await self.classifier_agent.classify(files_to_classify, file_ids_to_classify)
+            background_tasks.add_task(
+                self._background_classify_files,
+                borrower_id=borrower_id,
+                files_base64=files_to_classify,
+                file_ids=file_ids_to_classify
+            )
+
+        await self.lender_dao.update_borrower_status(borrower_id, "Docs Submitted")     
+        
+        return {
+            "status": "success",
+            "review_results": all_review_results,
+            "stats": {
+                "total_received": len(pending_records),
+                "approved": len(approved_ids),
+                "rejected": len(pending_records) - len(approved_ids),
+                "classification_status": "processing_in_background" 
+            },
+            "overall_summary": " ".join(overall_summaries) 
+        }
+
+    async def _background_classify_files(self, borrower_id: str, files_base64: list, file_ids: list):
+        """
+        Background worker that processes approved files in batches to respect rate limits.
+        """
+        BATCH_SIZE = 5
+        classified_count = 0
+        logger.info(f"Starting background classification for borrower {borrower_id}. Total files: {len(files_base64)}")
+        
+        try:
+            for i in range(0, len(files_base64), BATCH_SIZE):
+                batch_files = files_base64[i : i + BATCH_SIZE]
+                batch_ids = file_ids[i : i + BATCH_SIZE]
+                
+                classification_results = await self.classifier_agent.classify(batch_files, batch_ids)
+                
                 for classification in classification_results.files:
                     await self.file_dao.update_file_classification(
                         borrower_id, 
@@ -87,28 +159,18 @@ class FileService:
                         classification.file_id
                     )
                     classified_count += 1
-            except Exception as e:
-                logger.warning(f"Classification failed but review succeeded: {str(e)}")
-                # We don't raise here because the review results are still valuable to the UI
-
-        await self.lender_dao.update_borrower_status(borrower_id, "Docs Submitted")     
-        return {
-            "status": "success",
-            "review_results": review.results,
-            "stats": {
-                "total_received": len(pending_records),
-                "approved": len(approved_ids),
-                "rejected": len(pending_records) - len(approved_ids),
-                "successfully_classified": classified_count
-            },
-            "overall_summary": review.overall_summary
-        }
+                
+                if i + BATCH_SIZE < len(files_base64):
+                    await asyncio.sleep(2)
+                    
+            logger.info(f"Successfully classified {classified_count} files for borrower {borrower_id}.")
+            
+        except Exception as e:
+            logger.error(f"Background classification failed for borrower {borrower_id}: {str(e)}")
     
     async def analyze_files(self, borrower_id: str, lender_id: str) -> dict:
         """
         Public trigger for the analysis pipeline. 
-        Perform security checks and then return quickly, letting the 
-        background task do the heavy lifting.
         """
         logger.info(f"Analysis trigger received for borrower: {borrower_id} from lender: {lender_id}")
         
@@ -121,7 +183,6 @@ class FileService:
         # 2. Update status to 'Analyzing' to inform the UI
         await self.lender_dao.update_borrower_status(borrower_id, "Analyzing")
 
-        # Note: The caller (the route) will handle the BackgroundTask registration
         return {
             "status": "accepted",
             "message": "Analysis started in background. Monitor borrower status for completion.",
@@ -157,16 +218,12 @@ class FileService:
                     logger.warning(f"Skipping {file_record['file_name']}: Parser returned None.")
                     continue
 
-                # We create the coroutine but DON'T await it yet
-            # ...existing code for extraction, analysis, etc...
-            # At the end, set status to 'Completed'
-            await self.lender_dao.update_borrower_status(borrower_id, "Completed")
-            task = self.extractor_agent.extract_single_file(
-                parsed, 
-                file_id=file_record["id"], 
-                file_name=file_record["file_name"]
-            )
-            extraction_tasks.append(task)
+                task = self.extractor_agent.extract_single_file(
+                    parsed, 
+                    file_id=file_record["id"], 
+                    file_name=file_record["file_name"]
+                )
+                extraction_tasks.append(task)
 
             if not extraction_tasks:
                 logger.error(f"No valid files could be parsed for {borrower_id}.")
@@ -256,7 +313,6 @@ class FileService:
         """
         Fetches the list of files associated with a borrower, along with their analysis status.
         """
-        # Security Check
         is_owner = await self.lender_dao.check_borrower_ownership(borrower_id, lender_id)
         if not is_owner:
             logger.warning(f"Security Alert: Lender {lender_id} tried to access files of unauthorized borrower {borrower_id}")

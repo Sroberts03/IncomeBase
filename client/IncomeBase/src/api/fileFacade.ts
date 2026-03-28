@@ -15,6 +15,7 @@ const fileFacade = {
   uploadFile: async (file: File, zipCode: string, fileUUID: string, linkToken: string) => {
     // Path structure: borrowerId/fileName
     const filePath = `${fileUUID}/${zipCode}/${file.name}`;
+    console.log(`Uploading file to path: ${filePath}`);
     const { data, error } = await supabase.storage
       .from('documents')
       .upload(filePath, file);
