@@ -4,7 +4,7 @@ from models.classifier_schema import SingleClassifyFile
 
 
 class FileDao:
-    BUCKET_NAME = "documents"
+    BUCKET_NAME = "borrower-files"
 
     def __init__(self, supabase):
         self.supabase = supabase
@@ -37,8 +37,7 @@ class FileDao:
         """Downloads multiple files from storage in parallel."""
         async def download_one(path):
             res = await self.supabase.storage.from_(self.BUCKET_NAME).download(path)
-            return res
-            
+            return res.content
         tasks = [download_one(path) for path in file_paths]
         return await asyncio.gather(*tasks)
     

@@ -17,6 +17,7 @@ class TestFileService(unittest.IsolatedAsyncioTestCase):
         self.mock_parser = MagicMock()
         self.mock_data_preparer = MagicMock()
         self.mock_lender_dao = MagicMock()
+        self.mock_lender_dao.update_borrower_status = AsyncMock()
 
         self.service = FileService(
             self.mock_file_dao,

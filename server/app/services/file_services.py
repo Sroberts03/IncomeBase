@@ -40,7 +40,7 @@ class FileService:
             logger.warning(f"Security Alert: Zip verification failed during file submission for borrower {borrower_id}")
             raise Exception("Unauthorized: Zip code verification failed.")
         
-        pending_records = await self.file_dao.get_pending_records(link_token=request.link_token)
+        pending_records = await self.file_dao.get_pending_records(borrower_id)
         
         if not pending_records:
             return {
@@ -158,12 +158,15 @@ class FileService:
                     continue
 
                 # We create the coroutine but DON'T await it yet
-                task = self.extractor_agent.extract_single_file(
-                    parsed, 
-                    file_id=file_record["id"], 
-                    file_name=file_record["file_name"]
-                )
-                extraction_tasks.append(task)
+            # ...existing code for extraction, analysis, etc...
+            # At the end, set status to 'Completed'
+            await self.lender_dao.update_borrower_status(borrower_id, "Completed")
+            task = self.extractor_agent.extract_single_file(
+                parsed, 
+                file_id=file_record["id"], 
+                file_name=file_record["file_name"]
+            )
+            extraction_tasks.append(task)
 
             if not extraction_tasks:
                 logger.error(f"No valid files could be parsed for {borrower_id}.")

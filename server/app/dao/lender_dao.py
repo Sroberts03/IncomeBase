@@ -98,7 +98,7 @@ class LenderDao:
                     stats["link_created"] += 1
                 elif status in ["Docs Submitted", "Analyzing"]:
                     stats["docs_submitted"] += 1
-                elif status == "Analysis Completed":
+                elif status in ["Completed", "Analysis Completed"]:
                     stats["completed"] += 1
         
         return stats

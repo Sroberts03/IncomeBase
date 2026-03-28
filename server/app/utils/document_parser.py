@@ -20,6 +20,8 @@ class DocumentParser:
         else:
             # Fallback to checking the filename if magic numbers fail
             ext = "." + file_name.split(".")[-1].lower() if "." in file_name else ""
+            if ext not in [".pdf", ".jpg", ".jpeg", ".png"]:
+                return None
         
         try:
             # 2. PARSE BASED ON DETECTED TYPE
