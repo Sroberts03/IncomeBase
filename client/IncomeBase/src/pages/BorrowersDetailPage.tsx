@@ -233,7 +233,8 @@ export default function BorrowersDetailPage() {
           <div className="flex items-center gap-2 mt-2 md:mt-0">
             { borrowerDetails?.status === "Docs Submitted" 
               || borrowerDetails?.status === "Analysis Completed" 
-              || borrowerDetails?.status === "Analysis Failed" 
+              || borrowerDetails?.status === "Analysis Failed"
+              || borrowerDetails?.status === "Analysis Flagged For Review" 
               || borrowerDetails?.status === "Analyzing" ? (
               <button 
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-full shadow-xl transition text-base"

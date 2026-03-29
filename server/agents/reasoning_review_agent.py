@@ -9,10 +9,9 @@ class ReasoningReviewAgent(BaseAgent):
     def __init__(self, client):
         super().__init__(
             client=client,
-            model="o1",
+            model="gpt-4o",
             agent_name="reasoning_review",
             version="v1",
-            reasoning_effort="high"
         )
     async def review_analysis(self, raw_context: str, analysis_output: str) -> FinalReview:
             """

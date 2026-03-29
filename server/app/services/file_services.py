@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+import openai  # <--- Required for catching the RateLimitError
 from typing import Dict, Any, List
 from fastapi import BackgroundTasks
 from models.file_review_schema import BatchFileReview
@@ -63,7 +64,7 @@ class FileService:
             files_base64 = [base64.b64encode(f).decode("utf-8") for f in files]
             
             # 1. BATCHED REVIEW LOOP (Protects OpenAI limits)
-            BATCH_SIZE = 5
+            BATCH_SIZE = 2  # Reduced to prevent TPM spikes
             all_review_results = []
             overall_summaries = []
             
@@ -72,18 +73,34 @@ class FileService:
                 batch_records = pending_records[i : i + BATCH_SIZE]
                 batch_ids = [r["id"] for r in batch_records]
                 
-                # Process the chunk
-                batch_review = await self.file_review_agent.review(batch_files, batch_ids)
-                all_review_results.extend(batch_review.results)
+                # RETRY LOGIC FOR RATE LIMITS
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        # Process the chunk
+                        batch_review = await self.file_review_agent.review(batch_files, batch_ids)
+                        all_review_results.extend(batch_review.results)
+                        
+                        if hasattr(batch_review, 'overall_summary') and batch_review.overall_summary:
+                            overall_summaries.append(batch_review.overall_summary)
+                            
+                        break  # Break out of the retry loop on success
+                        
+                    except openai.RateLimitError as e:
+                        if attempt == max_retries - 1:
+                            logger.error("Max retries reached. OpenAI rate limit is still blocking.")
+                            raise e
+                        
+                        wait_time = 4 ** attempt # Waits 1s, then 4s, then 16s
+                        logger.warning(f"Rate limit hit during review! Sleeping for {wait_time}s before retrying...")
+                        await asyncio.sleep(wait_time)
                 
-                if hasattr(batch_review, 'overall_summary') and batch_review.overall_summary:
-                    overall_summaries.append(batch_review.overall_summary)
-                
-                # If there are more batches to process, pause to respect rate limits
+                # Standard pause between successful chunks
                 if i + BATCH_SIZE < len(files_base64):
-                    await asyncio.sleep(2) 
+                    await asyncio.sleep(3) 
 
             print(f"Completed review for all files. Results: {all_review_results}")
+            
         except Exception as e:
             logger.error(f"Error during file review: {str(e)}")
             raise Exception("Failed to process file review. Please try again later.")
@@ -141,7 +158,7 @@ class FileService:
         """
         Background worker that processes approved files in batches to respect rate limits.
         """
-        BATCH_SIZE = 5
+        BATCH_SIZE = 2 # Reduced for rate limiting
         classified_count = 0
         logger.info(f"Starting background classification for borrower {borrower_id}. Total files: {len(files_base64)}")
         
@@ -150,18 +167,33 @@ class FileService:
                 batch_files = files_base64[i : i + BATCH_SIZE]
                 batch_ids = file_ids[i : i + BATCH_SIZE]
                 
-                classification_results = await self.classifier_agent.classify(batch_files, batch_ids)
+                # RETRY LOGIC FOR RATE LIMITS
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        classification_results = await self.classifier_agent.classify(batch_files, batch_ids)
+                        
+                        for classification in classification_results.files:
+                            await self.file_dao.update_file_classification(
+                                borrower_id, 
+                                classification, 
+                                classification.file_id
+                            )
+                            classified_count += 1
+                        break # Break out on success
+                        
+                    except openai.RateLimitError as e:
+                        if attempt == max_retries - 1:
+                            logger.error("Max retries reached during classification. OpenAI rate limit blocking.")
+                            raise e
+                        
+                        wait_time = 4 ** attempt
+                        logger.warning(f"Rate limit hit during classification! Sleeping for {wait_time}s...")
+                        await asyncio.sleep(wait_time)
                 
-                for classification in classification_results.files:
-                    await self.file_dao.update_file_classification(
-                        borrower_id, 
-                        classification, 
-                        classification.file_id
-                    )
-                    classified_count += 1
-                
+                # Standard pause between chunks
                 if i + BATCH_SIZE < len(files_base64):
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(3)
                     
             logger.info(f"Successfully classified {classified_count} files for borrower {borrower_id}.")
             
@@ -232,15 +264,26 @@ class FileService:
 
             # 4. Execute Tasks in Chunks (Rate Limit Protection)
             extraction_results = []
-            chunk_size = 3 # Process 3 Vision requests at a time
+            chunk_size = 2 # Process 2 Vision requests at a time to be safe
             
             for i in range(0, len(extraction_tasks), chunk_size):
                 chunk = extraction_tasks[i : i + chunk_size]
                 logger.info(f"Processing chunk {i//chunk_size + 1} for {borrower_id}...")
                 
-                # Run the current batch
-                results = await asyncio.gather(*chunk)
-                extraction_results.extend(results)
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        # Run the current batch
+                        results = await asyncio.gather(*chunk)
+                        extraction_results.extend(results)
+                        break
+                    except openai.RateLimitError as e:
+                        if attempt == max_retries - 1:
+                            logger.error("Extraction rate limit blocked.")
+                            raise e
+                        wait_time = 4 ** attempt
+                        logger.warning(f"Extraction Rate Limit Hit! Sleeping {wait_time}s...")
+                        await asyncio.sleep(wait_time)
                 
                 # Pause to let OpenAI TPM (Tokens Per Minute) bucket refill
                 if i + chunk_size < len(extraction_tasks):
@@ -261,6 +304,7 @@ class FileService:
             while not analysis_approved and retries < MAX_RETRIES:
                 retries += 1
                 logger.info(f"Attempting analysis for {borrower_id} (Attempt {retries})")
+                print(f"Prepared data for analysis: {prepared_data}")
                 
                 final_report = await self.analyzer_agent.analyze(prepared_data, corrections)
                 
@@ -269,10 +313,11 @@ class FileService:
                     prepared_data, 
                     final_report.model_dump_json()
                 )
-                
+                print(f"Review results: {review_results}")
                 analysis_approved = review_results.is_approved
                 if not analysis_approved:
                     logger.info(f"Review failed for {borrower_id} (Attempt {retries}). Feedback: {review_results.corrections}")
+                    print(f"Review failed for {borrower_id} (Attempt {retries}). Feedback: {review_results.corrections}")
                     corrections = review_results.corrections
                 
             # 7. Finalize Status
