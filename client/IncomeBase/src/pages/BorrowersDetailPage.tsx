@@ -13,6 +13,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import SendEmailModal from '../components/SendEmailModal';
 
 export default function BorrowersDetailPage() {
   const { borrowerId } = useParams();
@@ -22,6 +23,7 @@ export default function BorrowersDetailPage() {
   const [token, setToken] = useState<string | null>(null);
   const [ loading, setLoading ] = useState(true);
   const baseUrl = import.meta.env.VITE_BASE_URL || '';
+  const [emailVisible, setEmailVisible] = useState(false);
   
   useEffect(() => {
     const fetchBorrowerDetails = async () => {
@@ -134,12 +136,16 @@ export default function BorrowersDetailPage() {
       console.error('Error analyzing files:', error);
       alert('An error occurred while analyzing files. Please try again later.');
     }
-    
+  };
+
+  const handleSendEmail = (emailContent: string, emailSubject: string, borrowerId: string, token: string) => {
+    console.log('Sending email to:', emailContent, emailSubject, borrowerId, token);
+    setEmailVisible(false);
   };
 
   const actions = [
     { label: 'Generate Link', onClick: handleGenerateLink, borrowerStatus: 'Needs Link Creation' },
-    { label: 'Email Doc Link', onClick: () => alert('Email functionality not implemented yet'), borrowerStatus: 'Link Created' },
+    { label: 'Email Doc Link', onClick: () => setEmailVisible(true), borrowerStatus: 'Link Created' },
     { label: 'Remind to Submit', onClick: () => alert('Reminder functionality not implemented yet'), borrowerStatus: 'Docs Not Submitted' },
     { label: 'Run Analysis', onClick: () => alert('Analysis in progress...'), borrowerStatus: 'Analyzing' },
     { label: 'Run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Docs Submitted' },
@@ -160,6 +166,9 @@ export default function BorrowersDetailPage() {
             <div className="text-gray-500 text-lg font-medium">Loading borrower details...</div>
           </div>
         </div>
+      )}
+      {emailVisible && (
+        <SendEmailModal sendEmail={handleSendEmail} borrowerDetails={borrowerDetails!} token={token!} setEmailVisible={setEmailVisible} />
       )}
       {/* Header Hero Section */}
       <section className="max-w-4xl mx-auto px-4 pt-8 pb-4">
