@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import lenderFacade from '../api/lenderFacade';
 import { useAuth } from '../context/AuthContext';
-import { FiUsers, FiLink, FiFileText, FiCheckCircle, FiUserPlus, FiLogOut, FiSettings, FiSearch, FiChevronDown } from 'react-icons/fi';
+import { FiUsers, FiLink, FiFileText, FiCheckCircle, FiUserPlus, FiLogOut, FiSettings, FiSearch, FiChevronDown, FiZap } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -175,7 +175,21 @@ const DashboardPage: React.FC = () => {
               >
                 &times;
               </button>
-              <h2 className="text-2xl font-bold mb-4 text-gray-800">Create New Borrower</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Create New Borrower</h2>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setNewBorrowerName("John Doe");
+                    setNewBorrowerEmail("john.doe@example.com");
+                    setNewBorrowerZip("90210");
+                  }}
+                  className="text-yellow-500 hover:text-yellow-600 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-full transition-colors mr-8"
+                  title="Demo Magic Autofill"
+                >
+                  <FiZap className="w-5 h-5" />
+                </button>
+              </div>
               <form onSubmit={handleCreateBorrower} className="flex flex-col gap-4">
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Full Name</label>

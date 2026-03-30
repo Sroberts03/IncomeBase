@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import lenderFacade from '../api/lenderFacade';
 import fileFacade from '../api/fileFacade';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { BorrowerDetails } from '../types/BorrowerDetails';
-import { FiArrowLeft, FiAlertTriangle, FiCheckCircle, FiCopy, FiBarChart2 } from 'react-icons/fi';
+import { FiArrowLeft, FiAlertTriangle, FiCheckCircle, FiCopy, FiBarChart2, FiDownload } from 'react-icons/fi';
+import { useReactToPrint } from 'react-to-print';
 import { 
   AreaChart, 
   Area, 
@@ -25,6 +26,23 @@ export default function BorrowersDetailPage() {
   const [ loading, setLoading ] = useState(true);
   const baseUrl = import.meta.env.VITE_BASE_URL || '';
   const [emailVisible, setEmailVisible] = useState(false);
+  
+  const componentRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `IncomeBase_Underwriting_Report_${borrowerId}`,
+    pageStyle: `
+      @page {
+        size: auto;
+        margin: 20mm;
+      }
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+        }
+      }
+    `
+  });
   
   useEffect(() => {
     const fetchBorrowerDetails = async () => {
@@ -167,7 +185,7 @@ export default function BorrowersDetailPage() {
   ];
 
   return (
-    <div className="bg-gray-50 min-h-screen py-8">
+    <div className="bg-gray-50 min-h-screen py-8" ref={componentRef}>
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
           <div className="flex flex-col items-center">
@@ -184,15 +202,17 @@ export default function BorrowersDetailPage() {
       )}
       {/* Header Hero Section */}
       <section className="max-w-4xl mx-auto px-4 pt-8 pb-4">
+        <div className="max-w-4xl mx-auto px-4 mb-6 print:hidden">
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center text-blue-600 hover:text-blue-800 font-medium transition"
+          >
+            <FiArrowLeft className="mr-2" />
+            Back to Dashboard
+          </button>
+        </div>
         <div className="flex flex-col md:flex-row items-center md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 mr-2"
-              title="Back to Dashboard"
-            >
-              <FiArrowLeft className="text-xl" />
-            </button>
             <div className="flex flex-col min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{borrowerDetails?.fullName || 'Borrower'}</h1>
@@ -251,7 +271,16 @@ export default function BorrowersDetailPage() {
           }
           `}</style>
           </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0">
+          <div className="flex items-center gap-2 mt-2 md:mt-0 print:hidden">
+            { (borrowerDetails?.status === "Analysis Completed" || borrowerDetails?.status === "Analysis Flagged For Review") && (
+              <button 
+                className="bg-white border text-blue-600 hover:bg-blue-50 border-blue-200 font-semibold px-4 py-3 rounded-full shadow-sm transition flex items-center gap-2"
+                onClick={() => handlePrint()}
+              >
+                <FiDownload />
+                Export PDF
+              </button>
+            )}
             { borrowerDetails?.status === "Docs Submitted" 
               || borrowerDetails?.status === "Analysis Completed" 
               || borrowerDetails?.status === "Analysis Failed"
