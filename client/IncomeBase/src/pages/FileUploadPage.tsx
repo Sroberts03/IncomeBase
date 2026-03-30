@@ -10,6 +10,7 @@ const FileUploadPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const zipCode = sessionStorage.getItem('verifiedZip');
 
@@ -48,7 +49,18 @@ const FileUploadPage: React.FC = () => {
   };
 
   const handleRemoveFile = (idx: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== idx));
+    setFiles(prev => {
+      const newFiles = [...prev];
+      const removedFile = newFiles.splice(idx, 1)[0];
+      if (removedFile) {
+        setFileErrors(prevErrors => {
+          const newErrors = { ...prevErrors };
+          delete newErrors[removedFile.name];
+          return newErrors;
+        });
+      }
+      return newFiles;
+    });
   };
 
   const handleBrowseFiles = () => {
@@ -64,6 +76,7 @@ const FileUploadPage: React.FC = () => {
 
     setUploading(true);
     setError(null);
+    setFileErrors({});
 
     try {
       // 1. Upload each file to Supabase Storage
@@ -81,8 +94,29 @@ const FileUploadPage: React.FC = () => {
       });
 
       console.log('Submission result:', result);
-      alert('Documents submitted successfully!');
-      navigate('/success');
+      
+      const rejectedFiles = result.reviewResults?.filter((r: any) => r.status === 'rejected') || [];
+      if (rejectedFiles.length > 0) {
+        const errors: Record<string, string> = {};
+        const acceptedFileNames = new Set(
+          result.reviewResults?.filter((r: any) => r.status === 'approved').map((r: any) => r.fileName) || []
+        );
+        
+        rejectedFiles.forEach((r: any) => {
+          if (r.fileName) errors[r.fileName] = r.borrowerMessage || 'File was rejected.';
+        });
+        
+        setFileErrors(errors);
+        
+        // Remove accepted files from the UI, keep only rejected ones
+        setFiles(prev => prev.filter(f => !acceptedFileNames.has(f.name)));
+        
+        setError('Some documents were not accepted. Please review the errors below.');
+      } else {
+        alert('Documents submitted successfully!');
+        navigate('/success');
+      }
+      
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Failed to upload or submit files.');
@@ -128,17 +162,21 @@ const FileUploadPage: React.FC = () => {
           <div className="w-full mb-4">
             <ul className="text-sm text-gray-700">
               {files.map((file, idx) => (
-                <li key={idx} className="flex items-center justify-between border-b border-gray-100 py-1 gap-2">
-                  <span className="flex items-center gap-2">
-                    {file.type.startsWith('image') ? (
-                      <img src={URL.createObjectURL(file)} alt={file.name} className="w-6 h-6 object-cover rounded" />
-                    ) : (
-                      <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16v-4a4 4 0 018 0v4m-4 4v-4m0 0V8m0 4H5m14 0h-4" /></svg>
-                    )}
-                    <span>{file.name}</span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                <li key={idx} className="flex flex-col border-b border-gray-100 py-2 gap-1">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="flex items-center gap-2">
+                      {file.type.startsWith('image') ? (
+                        <img src={URL.createObjectURL(file)} alt={file.name} className="w-6 h-6 object-cover rounded" />
+                      ) : (
+                        <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16v-4a4 4 0 018 0v4m-4 4v-4m0 0V8m0 4H5m14 0h-4" /></svg>
+                      )}
+                      <span>{file.name}</span>
+                      {fileErrors[file.name] && (
+                        <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     <button
                       type="button"
                       className="ml-2 text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded"
@@ -148,6 +186,10 @@ const FileUploadPage: React.FC = () => {
                       Remove
                     </button>
                   </span>
+                  </div>
+                  {fileErrors[file.name] && (
+                    <p className="text-sm text-red-600 ml-8 mt-1 border-l-2 border-red-500 pl-2">{fileErrors[file.name]}</p>
+                  )}
                 </li>
               ))}
             </ul>

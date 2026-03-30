@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from pydantic.alias_generators import to_camel
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 class BaseConfigModel(BaseModel):
     model_config = ConfigDict(
@@ -11,6 +11,7 @@ class BaseConfigModel(BaseModel):
 
 class IndividualFileResult(BaseConfigModel):
     file_id: str = Field(..., description="the uuid of the file being reviewed")
+    file_name: Optional[str] = None
     status: Literal["approved", "rejected"]
     borrower_message: str = Field(..., description="Helpful message for the user")
     reasoning: str = Field(..., description="Internal technical reasoning")

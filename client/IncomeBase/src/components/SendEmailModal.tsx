@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { BorrowerDetails } from '../types/BorrowerDetails';
 import LinkEmail from '../types/LinkEmail';
+import { useAuth } from '../context/AuthContext';
 
 type Props = {
     borrowerDetails: BorrowerDetails;
@@ -10,8 +11,9 @@ type Props = {
 };
 
 export default function SendEmailModal({ borrowerDetails, token, sendEmail, setEmailVisible }: Props) {
+    const { user } = useAuth();
     const [emailSubject, setEmailSubject] = useState('Document Request');
-    const [emailContent, setEmailContent] = useState(LinkEmail(borrowerDetails, token));
+    const [emailContent, setEmailContent] = useState(LinkEmail(borrowerDetails, token, user?.user_metadata?.full_name || 'Your Lender'));
 
     return (
         // Added flex-col to parent, removed padding on overlay for mobile full-screen

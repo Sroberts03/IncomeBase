@@ -1,7 +1,7 @@
 import type { BorrowerDetails } from "./BorrowerDetails";
 
 
-export default function LinkEmail(borrowerDetails: BorrowerDetails, token: string) {
+export default function LinkEmail(borrowerDetails: BorrowerDetails, token: string, lenderName: string = 'Your Lender') {
     const baseUrl = import.meta.env.VITE_BASE_URL || '';
     const portalLink = token ? `${baseUrl}/upload/${token}` : 'Upload link not available';
 
@@ -24,7 +24,7 @@ export default function LinkEmail(borrowerDetails: BorrowerDetails, token: strin
         "",
         "Best regards,",
         "",
-        "[Your Name]",
+        lenderName,
         "[Your Position]",
         "[Company Name]"
     ].join('\n');

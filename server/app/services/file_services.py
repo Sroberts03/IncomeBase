@@ -104,7 +104,14 @@ class FileService:
         except Exception as e:
             logger.error(f"Error during file review: {str(e)}")
             raise Exception("Failed to process file review. Please try again later.")
-        
+            
+        # Add file_name to each result so the client knows which file is which
+        for result in all_review_results:
+            matched_record = next((r for r in pending_records if r["id"] == result.file_id), None)
+            if matched_record:
+                path = matched_record.get("file_path", "")
+                result.file_name = path.split('/')[-1] if '/' in path else path
+
         # Filter and Process Rejections
         unapproved_files = [r for r in all_review_results if r.status == "rejected"]
         if unapproved_files:
