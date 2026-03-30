@@ -18,6 +18,12 @@ class LenderDao:
             .execute()
         return res.data[0] if res.data and len(res.data) > 0 else None
 
+    async def get_lender_email(self, lender_id: str) -> str:
+        res = await self.db.auth.admin.get_user_by_id(lender_id)
+        if res and res.user and res.user.email:
+            return res.user.email
+        return None
+
     async def create_borrower(self, lender_id: str, email: str, full_name: str, zip_code: str, 
                                 org_id: str, status: str, created_at: str, updated_at: str) -> str:
         res = await self.db.table("borrowers").insert({

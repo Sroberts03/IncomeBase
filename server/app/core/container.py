@@ -67,6 +67,7 @@ class AppContainer:
         self.parser = DocumentParser()
 
         # services
+        self.lender_service = LenderService(lender_dao=self.lender_dao)
         self.file_service = FileService(
             file_dao=self.file_dao,
             file_review_agent=self.file_review_agent,
@@ -76,9 +77,9 @@ class AppContainer:
             review_agent=self.reasoning_review_agent,
             parser=self.parser,
             data_preparer=self.data_preparer,
-            lender_dao=self.lender_dao
+            lender_dao=self.lender_dao,
+            lender_service=self.lender_service
         )
-        self.lender_service = LenderService(lender_dao=self.lender_dao)
 
         # handlers
         self.file_handler = FileHandler(file_service=self.file_service)

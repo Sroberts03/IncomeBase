@@ -178,3 +178,47 @@ class LenderService:
         except Exception as e:
             logger.error(f"Failed to send email: {str(e)}", exc_info=True)
             raise Exception("Failed to send email.")
+
+    async def notify_lender_docs_submitted(self, borrower_id: str):
+        """Asynchronously notifies the lender when a borrower completes document uploads."""
+        try:
+            borrower_details = await self.lender_dao.get_borrower_details(borrower_id)
+            if not borrower_details:
+                logger.warning(f"Borrower details not found for {borrower_id} during notification.")
+                return
+
+            lender_id = borrower_details.get("lender_id")
+            borrower_name = borrower_details.get("full_name", "A borrower")
+            if not lender_id:
+                return
+
+            lender_email = await self.lender_dao.get_lender_email(lender_id)
+            if not lender_email:
+                logger.warning(f"Lender email not found for lender {lender_id}.")
+                return
+
+            resend.api_key = os.getenv("RESEND_API_KEY")
+            
+            # Formating a clean HTML message with standard styling
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2 style="color: #2563eb;">Document Upload Complete</h2>
+                <p>Hello,</p>
+                <p><strong>{borrower_name}</strong> has successfully submitted their requested verification documents into the IncomeBase portal.</p>
+                <p>The AI classification agent is currently categorizing the files in the background.</p>
+                <p>You can view their documents and initiate the final income analysis on their dashboard profile.</p>
+                <br>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #777;">Thank you for using IncomeBase.</p>
+            </div>
+            """
+
+            resend.Emails.send({
+                "from": "IncomeBase Notifications <onboarding@resend.dev>",
+                "to": lender_email,
+                "subject": f"Upload Complete: {borrower_name}",
+                "html": html_content
+            })
+            logger.info(f"Lender notification email sent to {lender_email} for borrower {borrower_id}.")
+        except Exception as e:
+            logger.error(f"Failed to notify lender for borrower {borrower_id}: {str(e)}", exc_info=True)

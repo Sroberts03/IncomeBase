@@ -15,7 +15,7 @@ class FileService:
     def __init__(self, file_dao, file_review_agent, 
                  classifier_agent, extractor_agent, 
                  analyzer_agent, review_agent, 
-                 parser, data_preparer, lender_dao):
+                 parser, data_preparer, lender_dao, lender_service=None):
         self.file_dao = file_dao
         self.file_review_agent = file_review_agent
         self.classifier_agent = classifier_agent
@@ -25,6 +25,7 @@ class FileService:
         self.parser = parser
         self.data_preparer = data_preparer
         self.lender_dao = lender_dao
+        self.lender_service = lender_service
 
     async def submit_files(self, request: SubmitFilesRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
         """
@@ -148,6 +149,13 @@ class FileService:
             )
 
         await self.lender_dao.update_borrower_status(borrower_id, "Docs Submitted")     
+        
+        # 3. NOTIFY LENDER
+        if self.lender_service:
+            background_tasks.add_task(
+                self.lender_service.notify_lender_docs_submitted,
+                borrower_id=borrower_id
+            )
         
         return {
             "status": "success",
