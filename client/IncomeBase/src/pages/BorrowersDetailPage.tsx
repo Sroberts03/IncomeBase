@@ -14,6 +14,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import SendEmailModal from '../components/SendEmailModal';
+import toast from 'react-hot-toast';
 
 export default function BorrowersDetailPage() {
   const { borrowerId } = useParams();
@@ -124,17 +125,17 @@ export default function BorrowersDetailPage() {
       navigate(`file/view/${borrowerDetails.borrowerId}`)
     }
     else {
-      alert('Files are not available until documents have been submitted.');
+      toast.error('Files are not available until documents have been submitted.');
     }
   }
 
   const handleAnalyzeFiles = async () => {
     try {
       await fileFacade.analyzeFiles({borrowerId: borrowerId!});
-      alert('File analysis has been initiated. Please refresh the page after a few moments to see updated results.');
+      toast.success('File analysis has been initiated. Please refresh the page after a few moments to see updated results.');
     } catch (error) {
       console.error('Error analyzing files:', error);
-      alert('An error occurred while analyzing files. Please try again later.');
+      toast.error('An error occurred while analyzing files. Please try again later.');
     }
   };
 
@@ -147,10 +148,10 @@ export default function BorrowersDetailPage() {
         htmlContent: emailContent
       });
       setEmailVisible(false);
-      alert('Email sent successfully!');
+      toast.success('Email sent successfully!');
     } catch (err) {
       console.error('Failed to send email:', err);
-      alert('Failed to send email. Check your console and backend logs for more details.');
+      toast.error('Failed to send email. Check your console and backend logs for more details.');
     }
   };
 
@@ -158,7 +159,7 @@ export default function BorrowersDetailPage() {
     { label: 'Generate Link', onClick: handleGenerateLink, borrowerStatus: 'Needs Link Creation' },
     { label: 'Email Doc Link', onClick: () => setEmailVisible(true), borrowerStatus: 'Link Created' },
     { label: 'Remind to Submit', onClick: () => setEmailVisible(true), borrowerStatus: 'Docs Not Submitted' },
-    { label: 'Run Analysis', onClick: () => alert('Analysis in progress...'), borrowerStatus: 'Analyzing' },
+    { label: 'Run Analysis', onClick: () => toast('Analysis in progress...', { icon: '⏳' }), borrowerStatus: 'Analyzing' },
     { label: 'Run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Docs Submitted' },
     { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Completed' },
     { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Failed' },

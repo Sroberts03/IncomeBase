@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import fileFacade from '../api/fileFacade';
+import toast from 'react-hot-toast';
 
 const FileUploadPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -113,7 +114,7 @@ const FileUploadPage: React.FC = () => {
         
         setError('Some documents were not accepted. Please review the errors below.');
       } else {
-        alert('Documents submitted successfully!');
+        toast.success('Documents submitted successfully!');
         navigate('/success');
       }
       

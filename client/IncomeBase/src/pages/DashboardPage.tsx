@@ -3,6 +3,7 @@ import lenderFacade from '../api/lenderFacade';
 import { useAuth } from '../context/AuthContext';
 import { FiUsers, FiLink, FiFileText, FiCheckCircle, FiUserPlus, FiLogOut, FiSettings, FiSearch, FiChevronDown } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 interface Stats {
   totalBorrowers: number;
@@ -81,9 +82,9 @@ const DashboardPage: React.FC = () => {
       ]);
       setStats(statsData);
       setBorrowers(borrowersData.borrowers);
-      alert('Borrower created successfully!');
+      toast.success('Borrower created successfully!');
     } catch (error) {
-      alert('Error creating borrower.');
+      toast.error('Error creating borrower.');
       console.error('Error creating borrower:', error);
     } finally {
       setCreatingBorrower(false);

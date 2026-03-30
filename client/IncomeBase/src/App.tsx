@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import SuccessPage from './pages/SuccessPage';
 import BorrowersDetailPage from './pages/BorrowersDetailPage';
 import ViewFilePage from './pages/ViewFilePage';
+import { Toaster } from 'react-hot-toast';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, isLoading } = useAuth();
@@ -24,6 +25,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <Router>
         <div>
+          <Toaster position="bottom-right" />
           <Header />
           <main>
             <Routes>
