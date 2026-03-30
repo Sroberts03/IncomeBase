@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import lenderFacade from '../api/lenderFacade';
 import { useAuth } from '../context/AuthContext';
-import { FiUsers, FiLink, FiFileText, FiCheckCircle, FiUserPlus, FiLogOut, FiSettings, FiSearch, FiChevronDown, FiZap } from 'react-icons/fi';
+import { FiUsers, FiLink, FiFileText, FiCheckCircle, FiUserPlus, FiLogOut, FiSettings, FiSearch, FiChevronDown } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import CreateBorrowerModal from '../components/dashboard/CreateBorrowerModal';
+import BorrowerTable from '../components/dashboard/BorrowerTable';
 
 interface Stats {
   totalBorrowers: number;
@@ -35,61 +36,29 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const currentHour = new Date().getHours();
   const [showCreateBorrowerModal, setShowCreateBorrowerModal] = useState(false);
-  const [newBorrowerName, setNewBorrowerName] = useState('');
-  const [newBorrowerEmail, setNewBorrowerEmail] = useState('');
-  const [newBorrowerZip, setNewBorrowerZip] = useState('');
-  const [creatingBorrower, setCreatingBorrower] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, borrowersData] = await Promise.all([
-          lenderFacade.getDashboardStats(),
-          lenderFacade.getBorrowers(),
-        ]);
-        setStats(statsData);
-        setBorrowers(borrowersData.borrowers);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }; 
-
-    fetchData();
-  }, []);
-
-  const handleCreateBorrower = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreatingBorrower(true);
+  const fetchDashboardData = async () => {
     try {
-      await lenderFacade.createBorrower({
-        fullName: newBorrowerName,
-        email: newBorrowerEmail,
-        zipCode: newBorrowerZip,
-      });
-      setShowCreateBorrowerModal(false);
-      setNewBorrowerName('');
-      setNewBorrowerEmail('');
-      setNewBorrowerZip('');
-      // Refresh dashboard data after creating borrower
       const [statsData, borrowersData] = await Promise.all([
         lenderFacade.getDashboardStats(),
         lenderFacade.getBorrowers(),
       ]);
       setStats(statsData);
       setBorrowers(borrowersData.borrowers);
-      toast.success('Borrower created successfully!');
     } catch (error) {
-      toast.error('Error creating borrower.');
-      console.error('Error creating borrower:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
-      setCreatingBorrower(false);
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-lg text-gray-500">Loading dashboard...</div>;
 
@@ -166,83 +135,10 @@ const DashboardPage: React.FC = () => {
         </div>
         {/* Create Borrower Modal */}
         {showCreateBorrowerModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-md">
-            <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md relative">
-              <button
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-                onClick={() => setShowCreateBorrowerModal(false)}
-                aria-label="Close"
-              >
-                &times;
-              </button>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">Create New Borrower</h2>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setNewBorrowerName("John Doe");
-                    setNewBorrowerEmail("john.doe@example.com");
-                    setNewBorrowerZip("90210");
-                  }}
-                  className="text-yellow-500 hover:text-yellow-600 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-full transition-colors mr-8"
-                  title="Demo Magic Autofill"
-                >
-                  <FiZap className="w-5 h-5" />
-                </button>
-              </div>
-              <form onSubmit={handleCreateBorrower} className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={newBorrowerName}
-                    onChange={e => setNewBorrowerName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Email</label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={newBorrowerEmail}
-                    onChange={e => setNewBorrowerEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">ZIP Code</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={newBorrowerZip}
-                    onChange={e => setNewBorrowerZip(e.target.value)}
-                    required
-                    pattern="\d{5}(-\d{4})?"
-                    placeholder="e.g. 12345 or 12345-6789"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 mt-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    onClick={() => setShowCreateBorrowerModal(false)}
-                    disabled={creatingBorrower}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-                    disabled={creatingBorrower}
-                  >
-                    {creatingBorrower ? 'Creating...' : 'Create'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+          <CreateBorrowerModal 
+            onClose={() => setShowCreateBorrowerModal(false)} 
+            onSuccess={() => fetchDashboardData()} 
+          />
         )}
       </header>
 
@@ -313,46 +209,11 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Borrowers Table */}
-        <section className="bg-white rounded-xl shadow p-0 border border-gray-100 overflow-hidden">
-          <h2 className="text-xl font-semibold text-gray-700 px-6 pt-6 pb-2">Borrowers</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50 shadow-lg">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created At</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-50">
-                {filteredBorrowers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400 text-lg">No borrowers found.</td>
-                  </tr>
-                ) : (
-                  filteredBorrowers.map((borrower) => (
-                    <tr 
-                      key={borrower.borrowerId} 
-                      className="hover:bg-gray-50 transition"
-                      onClick={() => handleBorrowerClick(borrower.borrowerId)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold text-base">{borrower.fullName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-700 text-sm">{borrower.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${statusBadgeStyles[borrower.status] || 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
-                            {borrower.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">{new Date(borrower.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <BorrowerTable 
+          borrowers={filteredBorrowers} 
+          handleBorrowerClick={handleBorrowerClick} 
+          statusBadgeStyles={statusBadgeStyles} 
+        />
       </main>
     </div>
   );
