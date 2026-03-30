@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.container import container
@@ -24,15 +26,10 @@ app = FastAPI(
 )
 
 # 4. CORS Middleware
+load_dotenv()
 origins = [
+    os.getenv("FRONTEND_ORIGIN"),
     "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://localhost:5175",
-    "http://127.0.0.1:5175",
-    "http://localhost:5176",
-    "http://127.0.0.1:5176",
 ]
 
 app.add_middleware(
