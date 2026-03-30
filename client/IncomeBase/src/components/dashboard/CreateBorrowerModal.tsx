@@ -53,8 +53,8 @@ export default function CreateBorrowerModal({ onClose, onSuccess }: CreateBorrow
             type="button" 
             onClick={() => {
               setNewBorrowerName("John Doe");
-              setNewBorrowerEmail("john.doe@example.com");
-              setNewBorrowerZip("90210");
+              setNewBorrowerEmail("samr72003@gmail.com");
+              setNewBorrowerZip("84054");
             }}
             className="text-yellow-500 hover:text-yellow-600 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-full transition-colors mr-8"
             title="Demo Magic Autofill"
