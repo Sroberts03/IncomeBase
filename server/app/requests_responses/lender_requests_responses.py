@@ -61,3 +61,7 @@ class GetBorrowerResponse(BaseConfigModel):
     updated_at: str
     analysis: Optional[AnalysisResult] = None
     document_link: Optional[str] = None
+
+class GetLenderInfoResponse(BaseConfigModel):
+    role: str
+    organization: str

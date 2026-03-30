@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { BorrowerDetails } from '../types/BorrowerDetails';
 import LinkEmail from '../types/LinkEmail';
 import { useAuth } from '../context/AuthContext';
+import lenderFacade from '../api/lenderFacade';
 
 type Props = {
     borrowerDetails: BorrowerDetails;
@@ -13,7 +14,40 @@ type Props = {
 export default function SendEmailModal({ borrowerDetails, token, sendEmail, setEmailVisible }: Props) {
     const { user } = useAuth();
     const [emailSubject, setEmailSubject] = useState('Document Request');
-    const [emailContent, setEmailContent] = useState(LinkEmail(borrowerDetails, token, user?.user_metadata?.full_name || 'Your Lender'));
+    const [lenderRole, setLenderRole] = useState('');
+    const [lenderOrg, setLenderOrg] = useState('');
+    const [isMessageEdited, setIsMessageEdited] = useState(false);
+    const [emailContent, setEmailContent] = useState('');
+
+    useEffect(() => {
+        const fetchLenderInfo = async () => {
+            if (!user) return;
+            try {
+                const data = await lenderFacade.getLenderInfo();
+                if (data) {
+                    if (data.role) setLenderRole(data.role);
+                    if (data.organization) setLenderOrg(data.organization);
+                }
+            } catch (err) {
+                console.error('Failed to fetch lender info from server:', err);
+            }
+        };
+
+        fetchLenderInfo();
+    }, [user]);
+
+    useEffect(() => {
+        if (!isMessageEdited) {
+            setEmailContent(
+                LinkEmail(borrowerDetails, token, user?.user_metadata?.display_name, lenderRole, lenderOrg)
+            );
+        }
+    }, [lenderRole, lenderOrg, isMessageEdited, borrowerDetails, token, user]);
+
+    const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setIsMessageEdited(true);
+        setEmailContent(e.target.value);
+    };
 
     return (
         // Added flex-col to parent, removed padding on overlay for mobile full-screen
@@ -47,6 +81,29 @@ export default function SendEmailModal({ borrowerDetails, token, sendEmail, setE
                 {/* Email Form */}
                 {/* Increased pb to account for fixed button container */}
                 <div className="flex-1 flex flex-col p-6 gap-4 bg-gray-50/30 overflow-y-auto pb-28 sm:pb-32">
+                    <div className="flex flex-col sm:flex-row gap-4 mb-2">
+                        <div className="flex-1">
+                            <label htmlFor="organization" className="text-sm font-medium text-gray-700 block mb-1">Organization</label>
+                            <input
+                                id="organization"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-base text-gray-800 placeholder:text-gray-400 shadow-sm"
+                                placeholder="E.g. Acme Lending"
+                                value={lenderOrg}
+                                onChange={e => setLenderOrg(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label htmlFor="role" className="text-sm font-medium text-gray-700 block mb-1">Role</label>
+                            <input
+                                id="role"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-base text-gray-800 placeholder:text-gray-400 shadow-sm"
+                                placeholder="E.g. Loan Officer"
+                                value={lenderRole}
+                                onChange={e => setLenderRole(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
                     <label htmlFor="subject" className="text-sm font-medium text-gray-700 -mb-2">Subject</label>
                     <input
                         id="subject"
@@ -62,7 +119,7 @@ export default function SendEmailModal({ borrowerDetails, token, sendEmail, setE
                         className="w-full flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-base text-gray-800 placeholder:text-gray-400 resize-none shadow-sm"
                         placeholder="Write your message..."
                         value={emailContent}
-                        onChange={e => setEmailContent(e.target.value)}
+                        onChange={handleMessageChange}
                     />
                     
                     {/* Fixed Action Button Container */}

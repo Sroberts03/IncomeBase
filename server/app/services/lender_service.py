@@ -11,7 +11,8 @@ from app.requests_responses.lender_requests_responses import (
     VerifyZipResponse,
     DashboardStatsResponse,
     GetBorrowersResponse,
-    BorrowerSummary
+    BorrowerSummary,
+    GetLenderInfoResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -127,3 +128,21 @@ class LenderService:
         borrower_details["analysis"] = analysis_details 
 
         return GetBorrowerResponse(**borrower_details)
+
+    async def get_lender_info(self, current_user_id: str) -> GetLenderInfoResponse:
+        """Fetches the lender's role and organization name."""
+        info = await self.lender_dao.get_lender_info(current_user_id)
+        if not info:
+            return GetLenderInfoResponse(role="", organization="")
+        
+        role = info.get("role", "")
+        orgs = info.get("organizations", {})
+        
+        if isinstance(orgs, list):
+            org_name = orgs[0].get("org_name", "") if len(orgs) > 0 else ""
+        elif isinstance(orgs, dict):
+            org_name = orgs.get("org_name", "")
+        else:
+            org_name = ""
+            
+        return GetLenderInfoResponse(role=role, organization=org_name)

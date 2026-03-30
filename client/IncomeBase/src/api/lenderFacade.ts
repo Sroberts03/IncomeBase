@@ -45,6 +45,11 @@ const lenderFacade = {
   getBorrowerDetails: async (borrowerId: string) => {
     const response = await apiClient.get(`/lender/borrower/${borrowerId}`);
     return response.data;
+  },
+
+  getLenderInfo: async () => {
+    const response = await apiClient.get('/lender/info');
+    return response.data;
   }
 };
 

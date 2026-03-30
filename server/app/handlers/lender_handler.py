@@ -6,7 +6,8 @@ from app.requests_responses.lender_requests_responses import (
     GenerateLinkResponse,
     GetBorrowersResponse,
     VerifyZipRequest,
-    VerifyZipResponse
+    VerifyZipResponse,
+    GetLenderInfoResponse
 )
 
 
@@ -31,3 +32,6 @@ class LenderHandler:
     
     async def get_borrower_details(self, current_user_id: str, borrower_id: str) -> GetBorrowersResponse:
         return await self.lender_service.get_borrower_details(current_user_id, borrower_id)
+
+    async def get_lender_info(self, current_user_id: str) -> GetLenderInfoResponse:
+        return await self.lender_service.get_lender_info(current_user_id)

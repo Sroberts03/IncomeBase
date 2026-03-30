@@ -12,7 +12,8 @@ from app.requests_responses.lender_requests_responses import (
     VerifyZipResponse,
     DashboardStatsResponse,
     GetBorrowersResponse,
-    GetBorrowerResponse
+    GetBorrowerResponse,
+    GetLenderInfoResponse
 )
 from app.core.get_current_user_id import get_current_user_id
 
@@ -32,6 +33,14 @@ async def create_borrower(
     handler: LenderHandler = Depends(get_lender_handler)
 ) -> CreateBorrowerResponse:
     return await handler.create_borrower(current_user_id, create_borrower_request)
+
+@router.get("/info", response_model=GetLenderInfoResponse)
+async def get_lender_info(
+    current_user_id: str = Depends(get_current_user_id),
+    handler: LenderHandler = Depends(get_lender_handler)
+) -> GetLenderInfoResponse:
+    """Fetches the lender's role and organization from the database."""
+    return await handler.get_lender_info(current_user_id)
 
 @router.post("/generate-link", response_model=GenerateLinkResponse)
 async def generate_link(

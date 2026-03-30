@@ -11,6 +11,13 @@ class LenderDao:
             return res.data[0]["org_id"]
         return None
 
+    async def get_lender_info(self, lender_id: str):
+        res = await self.db.table("organization_members") \
+            .select("role, organizations(org_name)") \
+            .eq("member_id", lender_id) \
+            .execute()
+        return res.data[0] if res.data and len(res.data) > 0 else None
+
     async def create_borrower(self, lender_id: str, email: str, full_name: str, zip_code: str, 
                                 org_id: str, status: str, created_at: str, updated_at: str) -> str:
         res = await self.db.table("borrowers").insert({
