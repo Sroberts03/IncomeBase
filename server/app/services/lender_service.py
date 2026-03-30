@@ -19,6 +19,7 @@ from app.requests_responses.lender_requests_responses import (
 )
 import resend
 import os
+from app.utils.email_parser import parse_email_to_html
 
 logger = logging.getLogger(__name__)
 
@@ -166,11 +167,15 @@ class LenderService:
         # "onboarding@resend.dev" can only send to the signup email.
         try:
             resend.api_key = os.getenv("RESEND_API_KEY")
+            
+            # Use the parser to transform the raw text from the frontend
+            formatted_html = parse_email_to_html(request.html_content)
+
             r = resend.Emails.send({
                 "from": "onboarding@resend.dev",
                 "to": borrower_details["email"],
                 "subject": request.subject,
-                "html": request.html_content
+                "html": formatted_html
             })
             logger.info(f"Email sent successfully to {borrower_details['email']}")
             await self.lender_dao.update_borrower_status(request.borrower_id, "Docs Not Submitted")
@@ -199,19 +204,16 @@ class LenderService:
 
             resend.api_key = os.getenv("RESEND_API_KEY")
             
-            # Formating a clean HTML message with standard styling
-            html_content = f"""
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <h2 style="color: #2563eb;">Document Upload Complete</h2>
-                <p>Hello,</p>
-                <p><strong>{borrower_name}</strong> has successfully submitted their requested verification documents into the IncomeBase portal.</p>
-                <p>The AI classification agent is currently categorizing the files in the background.</p>
-                <p>You can view their documents and initiate the final income analysis on their dashboard profile.</p>
-                <br>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 12px; color: #777;">Thank you for using IncomeBase.</p>
-            </div>
-            """
+            # Formatting a clean HTML message with the centralized parser
+            raw_content = f"""Hello,
+            
+{borrower_name} has successfully submitted their requested verification documents into the IncomeBase portal.
+
+The AI classification agent is currently categorizing the files in the background.
+
+You can view their documents and initiate the final income analysis on their dashboard profile."""
+            
+            html_content = parse_email_to_html(raw_content, title="Document Upload Complete")
 
             resend.Emails.send({
                 "from": "IncomeBase Notifications <onboarding@resend.dev>",
