@@ -14,8 +14,7 @@ export default function HomePage() {
       <header className="max-w-7xl mx-auto px-6 pt-16 pb-24 text-center lg:text-left grid lg:grid-cols-2 gap-16 items-center">
         <div>
           <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-900 mb-6">
-            The 30-second <br />
-            <span className="text-blue-600">Verification Hook.</span>
+            Welcome to IncomeBase
           </h1>
           <p className="text-xl text-slate-500 mb-10 max-w-lg mx-auto lg:mx-0 leading-relaxed">
             Send a secure link, verify identity via ZIP/SSN, and get instant income insights. The most seamless pipeline from Lender to Borrower.
