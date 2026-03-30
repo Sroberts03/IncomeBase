@@ -173,6 +173,7 @@ class LenderService:
                 "html": request.html_content
             })
             logger.info(f"Email sent successfully to {borrower_details['email']}")
+            await self.lender_dao.update_borrower_status(request.borrower_id, "Docs Not Submitted")
             return SendEmailResponse(success=True, message="Email sent successfully")
         except Exception as e:
             logger.error(f"Failed to send email: {str(e)}", exc_info=True)

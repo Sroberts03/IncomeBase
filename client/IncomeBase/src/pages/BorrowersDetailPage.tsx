@@ -157,7 +157,7 @@ export default function BorrowersDetailPage() {
   const actions = [
     { label: 'Generate Link', onClick: handleGenerateLink, borrowerStatus: 'Needs Link Creation' },
     { label: 'Email Doc Link', onClick: () => setEmailVisible(true), borrowerStatus: 'Link Created' },
-    { label: 'Remind to Submit', onClick: () => alert('Reminder functionality not implemented yet'), borrowerStatus: 'Docs Not Submitted' },
+    { label: 'Remind to Submit', onClick: () => setEmailVisible(true), borrowerStatus: 'Docs Not Submitted' },
     { label: 'Run Analysis', onClick: () => alert('Analysis in progress...'), borrowerStatus: 'Analyzing' },
     { label: 'Run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Docs Submitted' },
     { label: 'Re-run Analysis', onClick: handleAnalyzeFiles, borrowerStatus: 'Analysis Completed' },

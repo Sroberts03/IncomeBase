@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { BorrowerDetails } from '../types/BorrowerDetails';
-import LinkEmail from '../types/LinkEmail';
+import { LinkEmail, ReminderEmail } from '../types/LinkEmail';
 import { useAuth } from '../context/AuthContext';
 import lenderFacade from '../api/lenderFacade';
 
@@ -13,7 +13,8 @@ type Props = {
 
 export default function SendEmailModal({ borrowerDetails, token, sendEmail, setEmailVisible }: Props) {
     const { user } = useAuth();
-    const [emailSubject, setEmailSubject] = useState('Document Request');
+    const [emailSubject, setEmailSubject] = useState('');
+    const [isSubjectEdited, setIsSubjectEdited] = useState(false);
     const [lenderRole, setLenderRole] = useState('');
     const [lenderOrg, setLenderOrg] = useState('');
     const [isMessageEdited, setIsMessageEdited] = useState(false);
@@ -37,16 +38,29 @@ export default function SendEmailModal({ borrowerDetails, token, sendEmail, setE
     }, [user]);
 
     useEffect(() => {
+        const isReminder = borrowerDetails.status === 'Docs Not Submitted';
+        
         if (!isMessageEdited) {
             setEmailContent(
-                LinkEmail(borrowerDetails, token, user?.user_metadata?.display_name, lenderRole, lenderOrg)
+                isReminder ?
+                    ReminderEmail(borrowerDetails, token, user?.user_metadata?.display_name, lenderRole, lenderOrg) :
+                    LinkEmail(borrowerDetails, token, user?.user_metadata?.display_name, lenderRole, lenderOrg)
             );
         }
-    }, [lenderRole, lenderOrg, isMessageEdited, borrowerDetails, token, user]);
+        
+        if (!isSubjectEdited) {
+            setEmailSubject(isReminder ? 'Reminder: Document Upload Required' : 'Document Request');
+        }
+    }, [lenderRole, lenderOrg, isMessageEdited, isSubjectEdited, borrowerDetails, token, user]);
 
     const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setIsMessageEdited(true);
         setEmailContent(e.target.value);
+    };
+
+    const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIsSubjectEdited(true);
+        setEmailSubject(e.target.value);
     };
 
     return (
@@ -110,7 +124,7 @@ export default function SendEmailModal({ borrowerDetails, token, sendEmail, setE
                         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-base text-gray-800 placeholder:text-gray-400 shadow-sm"
                         placeholder="Enter message subject"
                         value={emailSubject}
-                        onChange={e => setEmailSubject(e.target.value)}
+                        onChange={handleSubjectChange}
                     />
                     
                     <label htmlFor="message" className="text-sm font-medium text-gray-700 -mb-2 mt-2">Message</label>
