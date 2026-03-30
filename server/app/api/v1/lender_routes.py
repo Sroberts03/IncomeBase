@@ -8,12 +8,14 @@ from app.requests_responses.lender_requests_responses import (
     CreateBorrowerResponse,
     GenerateLinkRequest,
     GenerateLinkResponse,
+    DashboardStatsResponse,
+    GetLenderInfoResponse,
+    SendEmailRequest,
+    SendEmailResponse,
     VerifyZipRequest,
     VerifyZipResponse,
-    DashboardStatsResponse,
     GetBorrowersResponse,
-    GetBorrowerResponse,
-    GetLenderInfoResponse
+    GetBorrowerResponse
 )
 from app.core.get_current_user_id import get_current_user_id
 
@@ -41,6 +43,14 @@ async def get_lender_info(
 ) -> GetLenderInfoResponse:
     """Fetches the lender's role and organization from the database."""
     return await handler.get_lender_info(current_user_id)
+
+@router.post("/send-email", response_model=SendEmailResponse)
+async def send_email(
+    request: SendEmailRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    handler: LenderHandler = Depends(get_lender_handler)
+) -> SendEmailResponse:
+    return await handler.send_email(current_user_id, request)
 
 @router.post("/generate-link", response_model=GenerateLinkResponse)
 async def generate_link(

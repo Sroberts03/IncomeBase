@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from pytest import Parser
+
 # agents
 from agents.file_review_agent import FileReviewAgent
 from agents.classifier_agent import ClassifierAgent

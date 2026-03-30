@@ -15,6 +15,13 @@ export interface VerifyZipRequest {
   zipCode: string;
 }
 
+export interface SendEmailRequest {
+  borrowerId: string;
+  token: string;
+  subject: string;
+  htmlContent: string;
+}
+
 const lenderFacade = {
   createBorrower: async (data: CreateBorrowerRequest) => {
     console.log(data);
@@ -49,6 +56,13 @@ const lenderFacade = {
 
   getLenderInfo: async () => {
     const response = await apiClient.get('/lender/info');
+    return response.data;
+  },
+
+  sendEmail: async (data: SendEmailRequest) => {
+    // We map camelCase (htmlContent, borrowerId) to snake_case on the backend using the python pydantic alias generator
+    // apiClient already sends JSON correctly
+    const response = await apiClient.post('/lender/send-email', data);
     return response.data;
   }
 };

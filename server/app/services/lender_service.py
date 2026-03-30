@@ -11,9 +11,14 @@ from app.requests_responses.lender_requests_responses import (
     VerifyZipResponse,
     DashboardStatsResponse,
     GetBorrowersResponse,
+    GetBorrowersResponse,
     BorrowerSummary,
-    GetLenderInfoResponse
+    GetLenderInfoResponse,
+    SendEmailRequest,
+    SendEmailResponse
 )
+import resend
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -146,3 +151,29 @@ class LenderService:
             org_name = ""
             
         return GetLenderInfoResponse(role=role, organization=org_name)
+
+    async def send_email(self, current_user_id: str, request: SendEmailRequest) -> SendEmailResponse:
+        # Security Check
+        is_owner = await self.lender_dao.check_borrower_ownership(request.borrower_id, current_user_id)
+        if not is_owner:
+            raise Exception("Unauthorized: This borrower record does not belong to you.")
+        
+        borrower_details = await self.lender_dao.get_borrower_details(request.borrower_id)
+        if not borrower_details or not borrower_details.get("email"):
+            raise Exception("Borrower email not found.")
+
+        # Note: By default resend enforces testing domain use for free accounts
+        # "onboarding@resend.dev" can only send to the signup email.
+        try:
+            resend.api_key = os.getenv("RESEND_API_KEY")
+            r = resend.Emails.send({
+                "from": "onboarding@resend.dev",
+                "to": borrower_details["email"],
+                "subject": request.subject,
+                "html": request.html_content
+            })
+            logger.info(f"Email sent successfully to {borrower_details['email']}")
+            return SendEmailResponse(success=True, message="Email sent successfully")
+        except Exception as e:
+            logger.error(f"Failed to send email: {str(e)}", exc_info=True)
+            raise Exception("Failed to send email.")

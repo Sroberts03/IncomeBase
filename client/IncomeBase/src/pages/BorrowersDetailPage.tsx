@@ -138,9 +138,20 @@ export default function BorrowersDetailPage() {
     }
   };
 
-  const handleSendEmail = (emailContent: string, emailSubject: string, borrowerId: string, token: string) => {
-    console.log('Sending email to:', emailContent, emailSubject, borrowerId, token);
-    setEmailVisible(false);
+  const handleSendEmail = async (emailContent: string, emailSubject: string, borrowerId: string, token: string) => {
+    try {
+      await lenderFacade.sendEmail({
+        borrowerId,
+        token,
+        subject: emailSubject,
+        htmlContent: emailContent
+      });
+      setEmailVisible(false);
+      alert('Email sent successfully!');
+    } catch (err) {
+      console.error('Failed to send email:', err);
+      alert('Failed to send email. Check your console and backend logs for more details.');
+    }
   };
 
   const actions = [

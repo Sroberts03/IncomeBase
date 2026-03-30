@@ -65,3 +65,13 @@ class GetBorrowerResponse(BaseConfigModel):
 class GetLenderInfoResponse(BaseConfigModel):
     role: str
     organization: str
+
+class SendEmailRequest(BaseConfigModel):
+    borrower_id: str
+    token: str
+    subject: str
+    html_content: str
+
+class SendEmailResponse(BaseConfigModel):
+    success: bool
+    message: str

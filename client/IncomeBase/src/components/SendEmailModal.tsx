@@ -127,7 +127,7 @@ export default function SendEmailModal({ borrowerDetails, token, sendEmail, setE
                     <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-100 mt-auto sm:rounded-b-2xl">
                         <button
                             className="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-medium text-base shadow-sm shadow-blue-600/20 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/20"
-                            onClick={() => sendEmail(emailSubject, emailContent, borrowerDetails.borrowerId, token)}
+                            onClick={() => sendEmail(emailContent, emailSubject, borrowerDetails.borrowerId, token)}
                         >
                             Send Message
                         </button>

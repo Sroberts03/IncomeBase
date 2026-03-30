@@ -7,7 +7,9 @@ from app.requests_responses.lender_requests_responses import (
     GetBorrowersResponse,
     VerifyZipRequest,
     VerifyZipResponse,
-    GetLenderInfoResponse
+    GetLenderInfoResponse,
+    SendEmailRequest,
+    SendEmailResponse
 )
 
 
@@ -35,3 +37,6 @@ class LenderHandler:
 
     async def get_lender_info(self, current_user_id: str) -> GetLenderInfoResponse:
         return await self.lender_service.get_lender_info(current_user_id)
+
+    async def send_email(self, current_user_id: str, request: SendEmailRequest) -> SendEmailResponse:
+        return await self.lender_service.send_email(current_user_id, request)
