@@ -14,6 +14,7 @@ class BaseConfigModel(BaseModel):
 class SubmitFilesRequest(BaseConfigModel):
     link_token: str 
     zip_code: str
+    
 class AnalyzeFilesRequest(BaseConfigModel):
     borrower_id: str
 

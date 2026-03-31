@@ -2,6 +2,15 @@ import type { FileRecord } from '../types/FileRecords';
 import apiClient from './apiClient';
 import { supabase } from './supabaseClient';
 
+export interface ReasoningLog {
+  id: string;
+  borrower_id: string;
+  agent: string;
+  raw_reasoning: string;
+  file_id: string | null;
+  created_at: string;
+}
+
 export interface SubmitFilesRequest {
   linkToken: string;
   zipCode: string;
@@ -47,6 +56,17 @@ const fileFacade = {
   getFilesForBorrower: async (borrowerId: string) => {
     const response = await apiClient.get(`/file/borrower/${borrowerId}/files`);
     return response.data.files;
+  },
+
+  getReasoningLogs: async (borrowerId: string): Promise<ReasoningLog[]> => {
+    const { data, error } = await supabase
+      .from('reasoning_logs')
+      .select('*')
+      .eq('borrower_id', borrowerId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data ?? [];
   },
 
   getSignedUrlsForFiles: async (files: FileRecord[]) => {

@@ -8,13 +8,16 @@ import BorrowerMetricsSection from '../components/borrower/BorrowerMetricsSectio
 import BorrowerAnalysisCharts from '../components/borrower/BorrowerAnalysisCharts';
 import BorrowerAnalysisSummary from '../components/borrower/BorrowerAnalysisSummary';
 import BorrowerHeaderSection from '../components/borrower/BorrowerHeaderSection';
+import AIReasoningTab from '../components/borrower/AIReasoningTab';
 import SendEmailModal from '../components/SendEmailModal';
 import toast from 'react-hot-toast';
+import { FiBarChart2, FiCpu } from 'react-icons/fi';
 
 export default function BorrowersDetailPage() {
   const { borrowerId } = useParams();
   const navigate = useNavigate();
   const [borrowerDetails, setBorrowerDetails] = useState<BorrowerDetails | null>(null);
+  const [activeTab, setActiveTab] = useState<'analysis' | 'reasoning'>('analysis');
   const [activeGraphTab, setActiveGraphTab] = useState<string>('incomeYtd');
   const [token, setToken] = useState<string | null>(null);
   const [ loading, setLoading ] = useState(true);
@@ -153,7 +156,7 @@ export default function BorrowersDetailPage() {
   ];
 
   return (
-    <div className="bg-gray-50 min-h-screen py-8" ref={componentRef}>
+    <div className="bg-gray-50 min-h-screen py-8" >
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
           <div className="flex flex-col items-center">
@@ -179,23 +182,62 @@ export default function BorrowersDetailPage() {
         handleGenerateLink={handleGenerateLink}
       />
 
-      <BorrowerMetricsSection 
-        borrowerDetails={borrowerDetails}
-        monthlyIncome={monthlyIncome}
-        stabilityScore={stabilityScore}
-        confidenceScore={confidenceScore}
-        getScoreColor={getScoreColor}
-      />
+      {/* Page Tabs */}
+      <div className="max-w-4xl mx-auto px-4 mb-6">
+        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit shadow-sm">
+          <button
+            id="tab-analysis"
+            onClick={() => setActiveTab('analysis')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+              activeTab === 'analysis'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <FiBarChart2 size={15} />
+            Analysis
+          </button>
+          <button
+            id="tab-ai-reasoning"
+            onClick={() => setActiveTab('reasoning')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+              activeTab === 'reasoning'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <FiCpu size={15} />
+            AI Reasoning
+          </button>
+        </div>
+      </div>
 
-      <BorrowerAnalysisCharts 
-        activeGraphTab={activeGraphTab}
-        setActiveGraphTab={setActiveGraphTab}
-        getGraphData={getGraphData}
-      />
+      {/* Tab Panels */}
+      {activeTab === 'analysis' && (
+        <div ref={componentRef}>
+          <BorrowerMetricsSection 
+            borrowerDetails={borrowerDetails}
+            monthlyIncome={monthlyIncome}
+            stabilityScore={stabilityScore}
+            confidenceScore={confidenceScore}
+            getScoreColor={getScoreColor}
+          />
 
-      <BorrowerAnalysisSummary 
-        borrowerDetails={borrowerDetails}
-      />
+          <BorrowerAnalysisCharts 
+            activeGraphTab={activeGraphTab}
+            setActiveGraphTab={setActiveGraphTab}
+            getGraphData={getGraphData}
+          />
+
+          <BorrowerAnalysisSummary 
+            borrowerDetails={borrowerDetails}
+          />
+        </div>
+      )}
+
+      {activeTab === 'reasoning' && borrowerId && (
+        <AIReasoningTab borrowerId={borrowerId} />
+      )}
     </div>
   );
 }
