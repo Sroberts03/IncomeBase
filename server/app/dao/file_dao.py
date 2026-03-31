@@ -55,11 +55,12 @@ class FileDao:
             "file_name": classification.file_name,
             "needs_to_be_processed": False
         }).eq("id", file_id).execute()
-        await self.supabase.table("reasoning_logs").insert({
-            "borrower_id": borrower_id,
-            "agent": "classifier",
-            "raw_reasoning": classification.reasoning,
-        }).execute()
+        await self.log_reasoning(
+            borrower_id=borrower_id,
+            agent="classifier",
+            raw_reasoning=classification.reasoning,
+            file_id=file_id,
+        )
 
     async def get_files_for_borrower(self, borrower_id: str):
         res = await self.supabase.table("files") \
@@ -109,6 +110,21 @@ class FileDao:
     
     async def get_files_for_borrower(self, borrower_id: str):
         res = await self.supabase.table("files") \
+            .select("*") \
+            .eq("borrower_id", borrower_id) \
+            .execute()
+        return res.data or []
+
+    async def log_reasoning(self, borrower_id: str, agent: str, raw_reasoning: str, file_id: str):
+        await self.supabase.table("reasoning_logs").insert({
+            "borrower_id": borrower_id,
+            "agent": agent,
+            "raw_reasoning": raw_reasoning,
+            "file_id": file_id,
+        }).execute()
+
+    async def get_reasoning_logs(self, borrower_id: str):
+        res = await self.supabase.table("reasoning_logs") \
             .select("*") \
             .eq("borrower_id", borrower_id) \
             .execute()

@@ -82,6 +82,15 @@ class FileService:
                         batch_review = await self.file_review_agent.review(batch_files, batch_ids)
                         all_review_results.extend(batch_review.results)
                         
+                        # Log reasoning for each reviewed file
+                        for result in batch_review.results:
+                            asyncio.ensure_future(self.file_dao.log_reasoning(
+                                borrower_id=borrower_id,
+                                agent="file_review",
+                                raw_reasoning=result.reasoning,
+                                file_id=result.file_id,
+                            ))
+                        
                         if hasattr(batch_review, 'overall_summary') and batch_review.overall_summary:
                             overall_summaries.append(batch_review.overall_summary)
                             
@@ -304,7 +313,14 @@ class FileService:
                 if i + chunk_size < len(extraction_tasks):
                     await asyncio.sleep(4) 
             
-            # 5. Save Extractions to Database
+            # 5. Log extraction reasoning, then save to database
+            for result in extraction_results:
+                asyncio.ensure_future(self.file_dao.log_reasoning(
+                    borrower_id=borrower_id,
+                    agent="extractor",
+                    raw_reasoning=result.reasoning,
+                    file_id=result.file_id,
+                ))
             await self.process_and_save_extractions(borrower_id, extraction_results)
             
             # 6. Prepare and Analyze (The Multi-Agent Review Loop)
@@ -322,12 +338,24 @@ class FileService:
                 print(f"Prepared data for analysis: {prepared_data}")
                 
                 final_report = await self.analyzer_agent.analyze(prepared_data, corrections)
+                asyncio.ensure_future(self.file_dao.log_reasoning(
+                    borrower_id=borrower_id,
+                    agent="analyzer",
+                    raw_reasoning=final_report.analysis_summary,
+                    file_id=None,
+                ))
                 
                 # Second agent reviews the first agent's work
                 review_results = await self.review_agent.review_analysis(
                     prepared_data, 
                     final_report.model_dump_json()
                 )
+                asyncio.ensure_future(self.file_dao.log_reasoning(
+                    borrower_id=borrower_id,
+                    agent="reasoning_review",
+                    raw_reasoning=review_results.auditor_notes,
+                    file_id=None,
+                ))
                 print(f"Review results: {review_results}")
                 analysis_approved = review_results.is_approved
                 if not analysis_approved:
