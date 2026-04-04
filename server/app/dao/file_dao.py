@@ -42,10 +42,18 @@ class FileDao:
         return await asyncio.gather(*tasks)
     
     async def remove_files(self, file_ids: list[str], file_paths: list[str]):
-        for file_id in file_ids:
-            await self.supabase.table("files").delete().eq("id", file_id).execute()
-        for file_path in file_paths:
-            await self.supabase.storage.from_(self.BUCKET_NAME).remove([file_path])
+        if not file_ids:
+            return
+            
+        # 1. Delete referencing logs first to satisfy foreign key constraint
+        await self.supabase.table("reasoning_logs").delete().in_("file_id", file_ids).execute()
+        
+        # 2. Delete the file records
+        await self.supabase.table("files").delete().in_("id", file_ids).execute()
+        
+        # 3. Remove from storage
+        if file_paths:
+            await self.supabase.storage.from_(self.BUCKET_NAME).remove(file_paths)
 
     async def update_file_classification(self, borrower_id: str, classification: SingleClassifyFile, file_id: str):
         await self.supabase.table("files").update({

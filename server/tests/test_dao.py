@@ -9,6 +9,7 @@ class MockSupabase:
     def __init__(self):
         self.table = MagicMock()
         self.storage = MagicMock()
+        self.storage.from_.return_value.remove = AsyncMock()
         
         # Setup chainable table methods
         self.table_return = MagicMock()
@@ -19,6 +20,8 @@ class MockSupabase:
         self.table_return.upsert.return_value = self.table_return
         self.table_return.order.return_value = self.table_return
         self.table_return.eq.return_value = self.table_return
+        self.table_return.in_.return_value = self.table_return
+        self.table_return.delete.return_value = self.table_return
         self.table_return.single = AsyncMock()
         self.table_return.execute = AsyncMock()
 
@@ -48,13 +51,13 @@ class TestFileDao(unittest.IsolatedAsyncioTestCase):
         self.mock_supabase.table.assert_called_with("files")
 
     async def test_get_files(self):
-        mock_download = AsyncMock(return_value=MagicMock(content=b"file_bytes"))
+        mock_download = AsyncMock(return_value=b"file_bytes")
         self.mock_supabase.storage.from_.return_value.download = mock_download
         
         result = await self.dao.get_files(["path1"])
         
         self.assertEqual(result, [b"file_bytes"])
-        self.mock_supabase.storage.from_.assert_called_with("borrower-files")
+        self.mock_supabase.storage.from_.assert_called_with("documents")
 
     async def test_update_file_classification(self):
         classification = SingleClassifyFile(
@@ -68,6 +71,23 @@ class TestFileDao(unittest.IsolatedAsyncioTestCase):
         
         await self.dao.update_file_classification("b123", classification, "f1")
         self.assertEqual(self.mock_supabase.table.call_count, 2)
+
+    async def test_remove_files(self):
+        file_ids = ["f1", "f2"]
+        file_paths = ["path1", "path2"]
+        
+        await self.dao.remove_files(file_ids, file_paths)
+        
+        # Verify reasoning_logs deletion
+        self.mock_supabase.table.assert_any_call("reasoning_logs")
+        self.mock_supabase.table_return.in_.assert_any_call("file_id", file_ids)
+        
+        # Verify files deletion
+        self.mock_supabase.table.assert_any_call("files")
+        self.mock_supabase.table_return.in_.assert_any_call("id", file_ids)
+        
+        # Verify storage removal
+        self.mock_supabase.storage.from_.return_value.remove.assert_called_with(file_paths)
 
 class TestLenderDao(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
